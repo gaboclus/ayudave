@@ -1,0 +1,35 @@
+# ── dependencias ──
+node_modules/
+
+# ── datos locales y privados (BD real, uploads, notas) ──
+# data/ se crea sola al arrancar (server.js / store-sqlite.js). NADA de data/ va al repo.
+# Las plantillas viven en la raíz: admins.example.json, config.example.json
+data/
+# datasets con datos personales — viven en data/ (ignorado), nunca en la raíz del repo
+centros-acopio.json
+personas-seed.json
+
+# ── entorno y credenciales ──
+.env
+*.env
+.env.*
+!.env.example
+*.local
+*service-account*.json
+gcp-*.json
+*.pem
+*.key
+
+# ── artefactos pesados de documentación (capturas con posible PII, PDFs, HTML generado) ──
+docs/shots/
+docs/shots-nuevas/
+docs/difusion/
+docs/*.pdf
+docs/AyudaVE-Documentacion*.html
+docs/*.png
+docs/.DS_Store
+
+# ── sistema ──
+.DS_Store
+**/.DS_Store
+*.log

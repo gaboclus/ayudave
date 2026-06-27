@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AyudaVE · Generador del puente de sincronización</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#0b1020; color:#e8eefc; font:15px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:760px; margin:0 auto; padding:32px 20px 80px; }
+  h1 { font-size:24px; margin:0 0 4px; }
+  .sub { color:#9fb0d8; margin:0 0 28px; }
+  h2 { font-size:17px; margin:32px 0 10px; }
+  label { display:block; font-weight:600; margin:14px 0 6px; }
+  input[type=text] { width:100%; padding:11px 13px; background:#121a33; color:#e8eefc; border:1px solid #2a3a66; border-radius:9px; font:14px monospace; }
+  .hint { color:#8a9bc4; font-size:13px; margin-top:5px; }
+  .btn { display:inline-block; margin-top:18px; padding:12px 18px; background:#3b6cff; color:#fff; border:0; border-radius:9px; font-weight:700; cursor:pointer; font-size:15px; }
+  .btn.secondary { background:#1d2949; }
+  .draglink { display:inline-block; margin:14px 0; padding:13px 20px; background:#16a34a; color:#fff !important; border-radius:10px; font-weight:800; text-decoration:none; font-size:16px; }
+  .draglink.disabled { background:#334; pointer-events:none; opacity:.5; }
+  pre { background:#070b16; border:1px solid #1e2a4d; border-radius:10px; padding:14px; overflow:auto; font-size:12px; white-space:pre-wrap; word-break:break-all; }
+  ol { padding-left:22px; } li { margin:7px 0; }
+  .card { background:#0f1730; border:1px solid #213057; border-radius:14px; padding:18px 20px; margin:18px 0; }
+  .warn { border-color:#7a5a18; background:#1c1606; }
+  code { background:#121a33; padding:1px 6px; border-radius:5px; font-size:13px; }
+  a { color:#7aa2ff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Puente de sincronización · AyudaVE</h1>
+  <p class="sub">Genera el “favorito” (bookmarklet) que un voluntario en Venezuela usa para copiar la lista de la fuente a AyudaVE — desde su propio navegador, con su consentimiento.</p>
+
+  <div class="card warn">
+    <strong>Requisito previo:</strong> el endpoint de AyudaVE tiene que ser público por HTTPS con certificado válido. Hoy el DNS aún no apunta a <code>136.68.45.14</code>, así que <code>ayudahumanitariavenezuela.com</code> no resuelve todavía. Apunta el DNS (o, temporalmente, abre el ingress de Cloud Run y usa la URL <code>*.run.app</code>) antes de repartir el bookmarklet.
+  </div>
+
+  <h2>1 · Configura</h2>
+  <label for="ep">Endpoint de ingesta</label>
+  <input id="ep" type="text" value="https://ayudahumanitariavenezuela.com/api/admin/ingest">
+  <div class="hint">No lo cambies salvo que uses la URL <code>*.run.app</code> mientras el DNS propaga.</div>
+
+  <label for="tok">Token de importación (<code>AYUDAVE_IMPORT_TOKEN</code>)</label>
+  <input id="tok" type="text" placeholder="pega aquí el token…">
+  <div class="hint">Es el mismo token que protege <code>/api/admin/ingest</code>. Trátalo como una contraseña: solo voluntarios de confianza.</div>
+
+  <button class="btn" onclick="gen()">Generar bookmarklet</button>
+
+  <h2>2 · Arrastra a tu barra de marcadores</h2>
+  <p>Arrastra este botón a la barra de favoritos del navegador (o clic derecho → añadir a marcadores):</p>
+  <a id="drag" class="draglink disabled" href="#">★ Sincronizar AyudaVE</a>
+
+  <h2>3 · Úsalo (el voluntario, en Venezuela)</h2>
+  <ol>
+    <li>Abrir <a href="https://desaparecidosterremotovenezuela.com" target="_blank" rel="noopener">desaparecidosterremotovenezuela.com</a> y esperar a que cargue la lista.</li>
+    <li>Pulsar el favorito <strong>★ Sincronizar AyudaVE</strong>.</li>
+    <li>Aparece un panel abajo a la derecha con el progreso. Al terminar: “✅ Sincronización completa”.</li>
+  </ol>
+
+  <h2>Alternativa: pegar en la consola</h2>
+  <p>Si el navegador bloquea el bookmarklet, abrir DevTools (F12) → pestaña <em>Console</em>, pegar esto y Enter (estando en la web de la fuente):</p>
+  <pre id="raw">— genera primero para ver el código —</pre>
+
+  <p class="hint" style="margin-top:30px">El servidor ya valida el token, deduplica por <code>source_id</code> y audita; reejecutar es seguro (idempotente). Este puente solo lo activa una persona real que decide hacerlo.</p>
+</div>
+
+<script>
+// Plantilla del bookmarklet (compacta). %EP% y %TOK% se sustituyen al generar.
+function template(EP, TOK) {
+  return "(async()=>{var ENDPOINT=%EP%,TOKEN=%TOK%,API='https://desaparecidos-terremoto-api.theempire.tech/api',PAGE=100;"
+    + "var o=document.getElementById('ayudave-sync');if(o)o.remove();"
+    + "var b=document.createElement('div');b.id='ayudave-sync';"
+    + "b.style.cssText='position:fixed;z-index:2147483647;right:16px;bottom:16px;width:340px;max-width:90vw;background:#0b1020;color:#e8eefc;font:13px/1.45 system-ui,sans-serif;border:1px solid #2a3a66;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);padding:14px 16px';"
+    + "b.innerHTML='<div style=\"font-weight:700;margin-bottom:6px\">AyudaVE · sincronizando…</div><div id=\"ayudave-log\" style=\"white-space:pre-wrap;max-height:40vh;overflow:auto\"></div>';"
+    + "document.body.appendChild(b);var L=b.querySelector('#ayudave-log');"
+    + "var log=function(m){L.textContent+=(L.textContent?'\\n':'')+m;L.scrollTop=L.scrollHeight;};"
+    + "var sleep=function(ms){return new Promise(function(r){setTimeout(r,ms);});};"
+    + "var page=1,totalPages=1,total=0,sent=0;try{do{"
+    + "var fr=await fetch(API+'/personas?page='+page+'&pageSize='+PAGE,{headers:{Accept:'application/json'}});"
+    + "if(!fr.ok){log('✖ La fuente respondió HTTP '+fr.status+'. ¿Estás en Venezuela y con la web de la fuente abierta?');break;}"
+    + "var j=await fr.json();totalPages=j.totalPages||1;total=j.total||total;var items=j.items||[];"
+    + "var last=page>=totalPages;var url=ENDPOINT+'?token='+encodeURIComponent(TOKEN)+(last?'&audit=1':'');"
+    + "var sr=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items})});"
+    + "if(!sr.ok){log('✖ AyudaVE respondió HTTP '+sr.status+' (¿token? ¿endpoint público?)');break;}"
+    + "var sj=await sr.json();sent+=items.length;"
+    + "log('Página '+page+'/'+totalPages+' · enviados '+sent+'/'+total+' · en servidor '+sj.total+((last&&sj.audited)?' · auditado':''));"
+    + "page++;await sleep(250);}while(page<=totalPages);"
+    + "if(page>totalPages)log('✅ Listo. Sincronización completa, sin duplicados.');"
+    + "}catch(e){log('⚠️ '+(e&&e.message||e));}})();";
+}
+
+function gen() {
+  var ep = document.getElementById('ep').value.trim();
+  var tok = document.getElementById('tok').value.trim();
+  if (!ep || !tok) { alert('Falta el endpoint o el token.'); return; }
+  var code = template(JSON.stringify(ep), JSON.stringify(tok));
+  var href = 'javascript:' + encodeURIComponent(code);
+  var a = document.getElementById('drag');
+  a.href = href; a.classList.remove('disabled');
+  document.getElementById('raw').textContent = code;
+}
+</script>
+</body>
+</html>

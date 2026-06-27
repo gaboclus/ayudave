@@ -1,0 +1,25 @@
+AyudaVE — Plataforma humanitaria para Venezuela
+Copyright 2026 Gabriel Massarelli (@gaboclus en X/Twitter)
+
+Creado y mantenido por Gabriel Massarelli.
+https://github.com/gaboclus/ayudave
+https://ayudahumanitariavenezuela.com
+
+--- Misión ---
+AyudaVE es un proyecto de código abierto cuyo objetivo es centralizar en un solo
+lugar la información humanitaria dispersa durante emergencias en Venezuela. El
+proyecto se mantiene y actualiza de forma continua en este mismo repositorio.
+
+--- Créditos a fuentes y plataformas integradas ---
+AyudaVE agrega y normaliza datos de otras iniciativas y plataformas. Cada fuente o
+plataforma integrada conserva el crédito y la atribución correspondiente. El listado
+de fuentes integradas se mantiene en el README y en la documentación del proyecto.
+Toda integración futura debe acreditar a su plataforma de origen.
+
+--- Créditos a contribuidores ---
+Este proyecto reconoce el aporte de todos los desarrolladores y colaboradores que
+contribuyan a él. Las contribuciones se registran en el historial de Git y en la
+sección de créditos del README.
+
+Cualquier redistribución, con o sin modificaciones, debe conservar este aviso de
+atribución conforme a la sección 4 de la Licencia Apache 2.0.

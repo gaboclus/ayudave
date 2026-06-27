@@ -1,0 +1,35 @@
+POST PARA X — Auditoría de duplicados
+(adjuntar imagen: x-post-auditoria.png)
+
+══════════════════════════════════════════
+TWEET 1 (principal, con la imagen)
+══════════════════════════════════════════
+🚨 INFORMACIÓN IMPORTANTE
+
+Auditamos los reportes de desaparecidos del terremoto en desaparecidosterremotovenezuela.com y detectamos que el 42,9% están DUPLICADOS.
+
+58.296 reportes → solo ~33.294 personas reales.
+La misma persona llegó a publicarse hasta 38 veces.
+
+Hilo 🧵👇
+
+══════════════════════════════════════════
+TWEET 2
+══════════════════════════════════════════
+No es una crítica: es un registro ciudadano hecho de buena fe. Pero los duplicados inflan las cifras y dificultan saber a cuántas personas realmente estamos buscando.
+
+En AyudaVE depuramos la data: mostramos 1 reporte por persona y una auditoría pública con los números reales.
+
+══════════════════════════════════════════
+TWEET 3
+══════════════════════════════════════════
+Puedes ver la lista ya depurada y la auditoría completa, en tiempo real, en:
+👉 ayudahumanitariavenezuela.com
+
+Datos abiertos, sin fines de lucro. Solo la comunidad ayudándose. 🇻🇪
+
+#Venezuela #Sismo #Terremoto #LaGuaira #Desaparecidos
+
+══════════════════════════════════════════
+NOTA: las cifras son una foto del momento (la fuente crece cada hora);
+la página /auditoría siempre muestra el número actualizado.

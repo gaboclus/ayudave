@@ -1,0 +1,10 @@
+# Qué NO subir al build de Cloud Run (--source .)
+.git/
+.gitignore
+node_modules/
+data/
+scripts/
+docs/
+*.log
+.DS_Store
+.claude/

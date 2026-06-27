@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:1080px;height:1350px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:linear-gradient(160deg,#003893 0%,#0a4fb8 60%,#00307a 100%);color:#fff;display:flex;flex-direction:column;}
+  .tri{height:20px;display:flex;} .tri span{flex:1;} .y{background:#fcd116;} .b{background:#0a4fb8;} .r{background:#cf142b;}
+  .wrap{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;padding:46px 70px;}
+  .megaphone{font-size:78px;}
+  .difundir{font-size:60px;font-weight:800;letter-spacing:1px;margin:6px 0 22px;}
+  .brand{display:flex;align-items:center;gap:18px;margin-bottom:8px;}
+  .brand img{width:96px;height:96px;background:#fff;border-radius:50%;padding:11px;}
+  .brand b{font-size:62px;font-weight:800;letter-spacing:-1px;} .brand .ve{color:#fcd116;}
+  .lead{font-size:30px;opacity:.95;margin:6px 0 26px;}
+  .list{width:100%;text-align:left;margin-bottom:26px;}
+  .item{display:flex;align-items:center;gap:20px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.22);border-radius:20px;padding:20px 26px;margin-bottom:14px;font-size:33px;font-weight:600;}
+  .item .em{font-size:40px;width:48px;text-align:center;}
+  .qrrow{display:flex;align-items:center;gap:26px;background:#fff;color:#003893;border-radius:24px;padding:24px 30px;width:100%;margin-top:auto;}
+  .qrrow img{width:150px;height:150px;}
+  .qrrow .u{font-size:24px;color:#5b6675;} .qrrow .url{font-size:33px;font-weight:800;letter-spacing:-.5px;} .qrrow .scan{font-size:22px;color:#5b6675;margin-top:4px;}
+  .foot{font-size:27px;font-weight:700;margin-top:18px;}
+</style></head>
+<body>
+  <div class="tri"><span class="y"></span><span class="b"></span><span class="r"></span></div>
+  <div class="wrap">
+    <div class="megaphone">📣</div>
+    <div class="difundir">POR FAVOR DIFUNDIR</div>
+    <div class="brand"><img src="escudo.svg" alt="VE"><b>Ayuda<span class="ve">VE</span></b></div>
+    <div class="lead">Toda la ayuda tras el sismo en Venezuela, en un solo lugar:</div>
+    <div class="list">
+      <div class="item"><span class="em">📦</span><span>Centros de acopio cercanos</span></div>
+      <div class="item"><span class="em">💸</span><span>Donaciones: insumos, Pago Móvil y cripto</span></div>
+      <div class="item"><span class="em">🏥</span><span>Personas en hospitales</span></div>
+      <div class="item"><span class="em">🔎</span><span>Desaparecidos y fallecidos</span></div>
+      <div class="item"><span class="em">🤝</span><span>Voluntarios y más</span></div>
+    </div>
+    <div class="qrrow">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=https://ayudahumanitariavenezuela.com" alt="QR">
+      <div><div class="u">Entra ahora:</div><div class="url">ayudahumanitariavenezuela.com</div><div class="scan">Escanea el QR o toca el enlace</div></div>
+    </div>
+    <div class="foot">Compártelo. Cada vez que difundes, alguien encuentra ayuda. 🇻🇪</div>
+  </div>
+  <div class="tri"><span class="y"></span><span class="b"></span><span class="r"></span></div>
+</body></html>

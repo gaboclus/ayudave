@@ -1,0 +1,35 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 675px; }
+  body { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; background: #ffffff; color: #0f1b2d; position: relative; overflow: hidden; }
+  .stripe { position: absolute; top: 0; left: 0; right: 0; height: 12px; background: linear-gradient(90deg, #fcd116 0 33.33%, #003893 33.33% 66.66%, #cf142b 66.66% 100%); }
+  .wrap { padding: 60px 64px 48px; height: 100%; display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 24px; letter-spacing: -.01em; color: #003893; }
+  .brand .ve { color: #cf142b; }
+  .pill { display: inline-flex; align-items: center; gap: 9px; margin-top: 26px; padding: 9px 16px; background: #fff3c9; border: 2px solid #fcd116; border-radius: 999px; color: #6b4e00; font-weight: 800; font-size: 16px; letter-spacing: .04em; width: max-content; }
+  h1 { margin-top: 22px; font-size: 50px; line-height: 1.08; letter-spacing: -.02em; font-weight: 800; max-width: 1020px; }
+  h1 .hl { color: #cf142b; }
+  .src { margin-top: 14px; font-size: 19px; color: #50607a; }
+  .src b { color: #0f1b2d; }
+  .stats { display: flex; gap: 18px; margin-top: 34px; }
+  .stat { flex: 1; background: #f4f6f8; border: 1px solid #dbe2ea; border-radius: 18px; padding: 22px 24px; }
+  .stat .n { font-size: 52px; font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+  .stat .l { margin-top: 10px; font-size: 16.5px; color: #50607a; font-weight: 600; }
+  .red { color: #cf142b; } .green { color: #1c7a3e; } .blue { color: #003893; }
+  .foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 26px; border-top: 1px solid #e3e9ef; font-size: 16.5px; color: #50607a; }
+  .foot b { color: #003893; }
+</style></head><body>
+  <div class="stripe"></div>
+  <div class="wrap">
+    <div class="brand">Ayuda<span class="ve">VE</span></div>
+    <div class="pill">⚠ INFORMACIÓN IMPORTANTE</div>
+    <h1>El <span class="hl">42,9% de los reportes</span> de desaparecidos del sismo están <span class="hl">DUPLICADOS</span></h1>
+    <div class="src">Auditoría de los reportes publicados en <b>desaparecidosterremotovenezuela.com</b></div>
+    <div class="stats">
+      <div class="stat"><div class="n blue">58.296</div><div class="l">Reportes en la fuente</div></div>
+      <div class="stat"><div class="n red">25.001</div><div class="l">Reportes duplicados (la misma persona)</div></div>
+      <div class="stat"><div class="n green">33.294</div><div class="l">Personas únicas reales</div></div>
+    </div>
+    <div class="foot"><div>La misma persona llegó a publicarse <b>hasta 38 veces</b>.</div><div><b>AyudaVE</b> · lista depurada + auditoría pública</div></div>
+  </div>
+</body></html>

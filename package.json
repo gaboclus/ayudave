@@ -1,0 +1,21 @@
+{
+  "name": "ayudave",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AyudaVE — plataforma de ayuda humanitaria para Venezuela (centros de acopio, donaciones, voluntarios y reporte de personas).",
+  "author": "Gabriel Massarelli (@gaboclus)",
+  "license": "Apache-2.0",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.js",
+    "start:demo": "AYUDAVE_SEED=on node --disable-warning=ExperimentalWarning server.js"
+  },
+  "dependencies": {
+    "@google-cloud/storage": "^7.21.0",
+    "pg": "^8.22.0",
+    "undici": "^6.27.0"
+  }
+}

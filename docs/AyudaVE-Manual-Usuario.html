@@ -1,0 +1,97 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>AyudaVE — Manual de usuario</title><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>
+  @page { size: A4; margin: 18mm 15mm; }
+  *{ box-sizing:border-box; }
+  body{ font-family:'Plus Jakarta Sans',-apple-system,'Segoe UI',Roboto,sans-serif; color:#0f1b2d; font-size:11.5pt; line-height:1.55; margin:0; }
+  h1,h2,h3,h4{ color:#0a2f72; line-height:1.25; page-break-after:avoid; }
+  h1{ font-size:20pt; border-bottom:3px solid #fcd116; padding-bottom:5px; margin-top:22px; }
+  h2{ font-size:16pt; margin-top:22px; }
+  h3{ font-size:13pt; margin-top:18px; color:#173e72; }
+  h4{ font-size:11.5pt; color:#173e72; }
+  a{ color:#003893; text-decoration:none; }
+  p{ margin:9px 0; }
+  code{ background:#eef2f8; border-radius:4px; padding:1px 5px; font-family:'SF Mono',Menlo,Consolas,monospace; font-size:9.5pt; }
+  pre{ background:#0f1b2d; color:#e7eefb; border-radius:8px; padding:12px 14px; overflow:auto; page-break-inside:avoid; }
+  pre code{ background:none; color:inherit; padding:0; font-size:9pt; line-height:1.45; }
+  table{ border-collapse:collapse; width:100%; margin:12px 0; font-size:9.8pt; page-break-inside:avoid; }
+  th,td{ border:1px solid #d8e0ea; padding:7px 10px; text-align:left; vertical-align:top; }
+  th{ background:#003893; color:#fff; }
+  tr:nth-child(even) td{ background:#f6f9fd; }
+  blockquote{ border-left:4px solid #fcd116; background:#fffaf0; margin:12px 0; padding:8px 14px; color:#5b4a1a; border-radius:0 8px 8px 0; }
+  ul,ol{ padding-left:22px; } li{ margin:3px 0; }
+  hr{ border:none; border-top:1px solid #e3e9ef; margin:20px 0; }
+
+  .cover{ text-align:center; padding:54px 0 24px; page-break-after:always; }
+  .cover .stripe{ height:9px; background:linear-gradient(90deg,#fcd116 0 33%,#003893 33% 66%,#cf142b 66%); border-radius:4px; margin:0 auto 30px; width:62%; }
+  .cover h1{ border:none; font-size:36pt; margin:6px 0; }
+  .cover .sub{ color:#0f1b2d; font-size:14pt; font-weight:600; }
+  .cover .ver{ color:#0a2f72; font-weight:700; font-size:11.5pt; margin-top:10px; }
+  .cover .meta{ color:#74819a; font-size:10pt; margin-top:6px; }
+  .cover img{ width:92%; max-width:740px; margin:30px auto 0; display:block; }
+
+  .toc{ page-break-after:always; padding-top:24px; }
+  .toc-h{ font-size:22pt; color:#0a2f72; font-weight:800; border-bottom:3px solid #fcd116; padding-bottom:7px; }
+  .toc-list{ list-style:none; padding:0; margin-top:20px; font-size:13.5pt; }
+  .toc-list li{ padding:11px 2px; border-bottom:1px solid #eef2f8; color:#0f1b2d; }
+  .toc-list .n{ display:inline-block; width:38px; color:#003893; font-weight:800; }
+
+  .doc h2{ page-break-before:always; border-top:3px solid #003893; padding-top:16px; font-size:17pt; }
+  .doc > h2:first-of-type{ page-break-before:avoid; }
+
+  .shots{ display:flex; flex-wrap:wrap; gap:16px 18px; justify-content:center; margin-top:16px; }
+  .shots figure{ margin:0; text-align:center; page-break-inside:avoid; width:84mm; }
+  .shots img{ max-width:84mm; max-height:150mm; width:auto; height:auto; border:1px solid #d8e0ea; border-radius:10px; box-shadow:0 2px 8px rgba(15,27,45,.10); }
+  .shots figcaption{ font-size:8.6pt; color:#5b6675; margin-top:6px; line-height:1.3; }
+</style></head><body><div class="cover"><div class="stripe"></div><h1>AyudaVE 🇻🇪</h1><div class="sub">Manual de usuario</div><div class="ver">Versión 2.0.1 · Junio 2026</div><div class="meta">ayudahumanitariavenezuela.com · Documento de usuario</div></div><p><strong>AyudaVE</strong> te ayuda a encontrar y dar ayuda tras el sismo en Venezuela: centros de acopio, personas desaparecidas, personas en hospitales, edificios afectados y más — todo en un solo lugar y actualizado solo.</p>
+<p>🌐 Entra desde cualquier teléfono o computadora: <strong>https://ayudahumanitariavenezuela.com</strong> No hay que instalar nada. Puedes "Agregar a inicio" para tenerla como una app.</p>
+<hr>
+<h2>La pantalla de inicio</h2>
+<p>Arriba ves un <strong>resumen en vivo</strong>: cuántos centros de acopio, personas en hospitales, desaparecidos, localizados y edificios con daños hay registrados. Toca cualquier número para ir a esa sección.</p>
+<p>Debajo, los botones grandes para <strong>hacer algo</strong> (donar, ayudar, ser voluntario…) y la sección <strong>Explora</strong> para <strong>buscar información</strong>.</p>
+<hr>
+<h2>Buscar información</h2>
+<h3>🏥 Centros de acopio</h3>
+<p>Toca <strong>"Ver centros de acopio"</strong>. Puedes:</p>
+<ul><li><strong>Buscar</strong> por nombre, estado, municipio o parroquia.</li><li>Ver una <strong>tabla</strong> de cuántos hay en cada estado/municipio/parroquia y filtrar tocándola.</li><li>En cada centro: <strong>qué necesita</strong> (agua, comida, medicinas…), su <strong>dirección completa</strong>, <strong>cómo llegar</strong> (abre el mapa), y <strong>contacto directo</strong> por WhatsApp/Instagram si lo tiene. Los que tienen contacto aparecen primero.</li></ul>
+<h3>🔎 Personas desaparecidas</h3>
+<p>Toca <strong>"Buscar personas reportadas"</strong> y escribe el nombre. Verás los reportes (desaparecido / encontrado / fallecido). Si tienes información de alguien, puedes <strong>dejar una pista</strong> desde su ficha.</p>
+<blockquote>La app muestra <strong>un solo reporte por persona</strong> aunque varios la hayan publicado; los duplicados se depuran automáticamente.</blockquote>
+<h3>🏨 Personas en hospitales</h3>
+<p>Toca <strong>"Personas en hospitales"</strong> para reunificación familiar. Busca <strong>por nombre</strong> (o por cédula, aunque la cédula no se muestra por privacidad) y filtra por hospital. Cada persona muestra hospital, edad, zona y motivo si está disponible.</p>
+<blockquote>Si no la encuentras, la pantalla enlaza a <strong>otras listas</strong> de iniciativas hermanas.</blockquote>
+<h3>🏚️ Edificios afectados</h3>
+<p>Toca <strong>"Edificios afectados"</strong>. Busca por nombre, zona o ciudad, y filtra por <strong>nivel de daño</strong> (parcial / severo / total). Cada edificio muestra su estado, ubicación, notas y <strong>"Cómo llegar"</strong>. Si reportaron personas atrapadas, sale una alerta.</p>
+<h3>🗺️ Mapa de la situación</h3>
+<p>Toca <strong>"Mapa de la situación"</strong>. Combina varias capas que puedes encender/apagar:</p>
+<ul><li><strong>Centros</strong> de acopio.</li><li><strong>Servicios</strong> — cortes de luz, agua, medicinas, comida, combustible (por color).</li><li><strong>Daños</strong> — edificios afectados (por nivel de daño).</li></ul>
+<p>Toca un punto para ver el detalle.</p>
+<h3>📞 Directorio de emergencia</h3>
+<p>Hospitales, bomberos, ambulancias y protección civil con sus teléfonos, para llamar directo.</p>
+<h3>🔗 Recursos</h3>
+<p>Grupos de WhatsApp y Telegram, bases de datos y galerías útiles, organizados por tipo. (Los publica el equipo de AyudaVE.)</p>
+<hr>
+<h2>Reportar y pedir ayuda</h2>
+<ul><li><strong>Reportar una persona</strong> (desaparecida, fallecida o encontrada): toca <strong>"Reportar una persona"</strong>, elige el tipo y llena los datos. Tu reporte aparece al instante para que otros ayuden.</li><li><strong>Dejar una pista</strong> sobre alguien: desde la ficha de la persona, botón <strong>"Tengo información"</strong>.</li><li><strong>Pedir ayuda</strong>: desde <strong>"Solicitar ayuda"</strong> en el inicio, cuentas qué necesitas (rescate, insumos, etc.).</li></ul>
+<hr>
+<h2>Dar ayuda</h2>
+<h3>💝 Donar</h3>
+<p>Toca <strong>"Quiero donar"</strong> y elige cómo: <strong>insumos físicos</strong>, <strong>Pago Móvil</strong>, <strong>transferencia bancaria</strong> o <strong>cripto (USDT/USDC)</strong>. La app te guía a un centro y te da los datos para donar. Puedes donar de forma <strong>anónima</strong>.</p>
+<h3>🙋 Ser voluntario</h3>
+<p>Toca <strong>"Quiero ser voluntario"</strong>, marca tus habilidades (tengo carro, puedo cargar, soy médico, etc.) y tu zona. Quedas registrado y puedes ver tareas de centros que piden voluntarios. Si ya eres voluntario, entra con <strong>"Ya soy voluntario"</strong>.</p>
+<h3>🏢 Tengo / quiero un centro de acopio</h3>
+<ul><li><strong>"Soy un centro de acopio"</strong> → entra a tu panel para gestionar necesidades, inventario, métodos de pago, horario, pedir voluntarios/transporte y registrar movimientos.</li><li><strong>"Quiero crear un centro"</strong> → publícalo en minutos para que la gente done ahí.</li></ul>
+<hr>
+<h2>Tu cuenta</h2>
+<p>Para guardar tu perfil, gestionar un centro o ser voluntario, <strong>inicia sesión con tu teléfono +58 y un PIN de 4 dígitos</strong>.</p>
+<ul><li>El número se normaliza solo: <code>0414…</code>, <code>414…</code> o <code>+58414…</code> valen igual.</li><li>Tu <strong>PIN se guarda cifrado</strong> y no se puede recuperar (ni el equipo lo ve). Si lo olvidas, contacta al equipo para reiniciarlo.</li><li>Buscar información y donar <strong>no requiere cuenta</strong>.</li></ul>
+<hr>
+<h2>Difundir</h2>
+<p>El botón flotante <strong>"🚨 DIFUNDIR es AYUDAR"</strong> comparte la app por WhatsApp, Telegram, X, Facebook o como imagen (flyer). <strong>Compartir salva a más personas.</strong> Si te tapa la pantalla, ciérralo con la <strong>✕</strong> del círculo (no vuelve a aparecer).</p>
+<hr>
+<h2>Privacidad</h2>
+<ul><li>AyudaVE publica solo lo <strong>mínimo para encontrar a alguien</strong> (nombre, zona, hospital, edad). <strong>No</strong> publica cédulas, direcciones exactas ni datos médicos.</li><li>El contador de visitas es <strong>anónimo</strong>: no se guarda tu IP.</li><li>Los datos de personas vienen de <strong>registros públicos</strong> de varias iniciativas y se usan para <strong>reunificación familiar</strong>.</li></ul>
+<hr>
+<p>¿Algo no funciona o falta una lista? El proyecto es colaborativo y sin fines de lucro — escríbele al equipo para sumar fuentes o reportar un error.</p>
+<hr>
+<h2>Historial de versiones</h2>
+<ul><li><strong>2.0.1</strong> (Jun 2026) — Manual actualizado con las funciones nuevas: personas en hospitales, edificios afectados, recursos, mapa de la situación, directorio de emergencia y la sección "cómo te orienta la app".</li><li><strong>2.0</strong> (Jun 2026) — Manual reescrito.</li><li><strong>1.0</strong> (25 jun 2026) — Primera versión.</li></ul>
+<p>*AyudaVE · ayudahumanitariavenezuela.com · v2.0.1*</p></body></html>

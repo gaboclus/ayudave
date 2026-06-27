@@ -1,0 +1,21 @@
+[Unit]
+Description=AyudaVE
+After=network.target
+
+[Service]
+Type=simple
+User=ayudave
+WorkingDirectory=/opt/ayudave
+Environment=PORT=4599
+# Arranca sin datos de ejemplo (producción). Quita esta línea para sembrar la demo.
+Environment=AYUDAVE_SEED=off
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning server.js
+Restart=always
+RestartSec=3
+# Endurecimiento básico
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
