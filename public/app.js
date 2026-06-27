@@ -397,7 +397,7 @@ function render() {
   let header;
   if (App.current.screen === 'home') {
     header = `<header class="appbar">
-      <img class="brand-escudo" src="escudo.svg" alt="Escudo de Venezuela">
+      <img class="brand-escudo" src="escudo.png" alt="Escudo de Venezuela">
       <div class="bar-title" style="font-size:19px;letter-spacing:-.02em">Ayuda<span style="color:var(--primary)">VE</span></div>
       <button class="iconbtn" data-action="account" aria-label="Mi perfil">${icon('user')}</button>
       <button class="iconbtn" data-action="emergency" aria-label="Emergencia" style="color:var(--critica)">${icon('alert')}</button>
@@ -519,7 +519,7 @@ function disclaimer() {
 /* ========== CUENTA: login por teléfono + perfil ========== */
 screens['login'] = () => ({
   tint: COLORS.donate, title: 'Iniciar sesión', html: `
-    <div class="center-txt" style="margin:8px 0 14px"><img src="escudo.svg" alt="Escudo de Venezuela" style="width:78px;height:78px;object-fit:contain"></div>
+    <div class="center-txt" style="margin:8px 0 14px"><img src="escudo.png" alt="Escudo de Venezuela" style="width:78px;height:78px;object-fit:contain"></div>
     <div class="screen-head center-txt"><h1>Entra con tu teléfono</h1><p class="sub">Te identificamos por tu número y un PIN de 4 dígitos.</p></div>
     ${phoneField('login-phone', '')}
     <button class="btn" data-action="login-continue">${icon('chevron')}Continuar</button>
