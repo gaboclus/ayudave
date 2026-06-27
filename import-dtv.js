@@ -14,6 +14,8 @@
 const DTV_API = (process.env.DTV_API || 'https://desaparecidos-terremoto-api.theempire.tech/api').replace(/\/+$/, '');
 const now = () => Date.now();
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const { searchFields } = require('./text-normalize');
+const { ensurePersonSearchColumns } = require('./person-search');
 
 /* Salida por proxy (necesario porque la fuente está geo-bloqueada a Venezuela).
    Si DTV_PROXY está definido (http://user:pass@host:port), enrutamos por undici;
@@ -62,14 +64,18 @@ function mapDtvPerson(src) {
 
 async function insertPersonsBatch(store, rows) {
   if (!rows.length) return;
-  const cols = ['status', 'nombre', 'estado', 'municipio', 'data', 'created_at'];
+  const cols = ['status', 'nombre', 'estado', 'municipio', 'data', 'created_at', 'name_norm', 'name_sig'];
   const tuples = rows.map(() => `(${cols.map(() => '?').join(',')})`).join(',');
   const params = [];
-  for (const r of rows) for (const c of cols) params.push(r[c]);
+  for (const r of rows) {
+    const { name_norm, name_sig } = searchFields(r.nombre);
+    params.push(r.status, r.nombre, r.estado, r.municipio, r.data, r.created_at, name_norm, name_sig);
+  }
   await store.run(`INSERT INTO persons (${cols.join(',')}) VALUES ${tuples}`, params);
 }
 
 async function importDtvPersons(store, { max = Infinity, pageSize = 100, log = () => {} } = {}) {
+  await ensurePersonSearchColumns(store, { log });
   // Idempotencia: junta los sourceId ya presentes para no reinsertar.
   const existing = new Set();
   for (const r of await store.all('SELECT data FROM persons')) {
@@ -132,12 +138,15 @@ function personChanged(storedData, mapped) {
 // Inserta filas nuevas y actualiza cambiadas en un solo statement (ON CONFLICT por source_id).
 async function upsertPersons(store, rows) {
   if (!rows.length) return;
-  const cols = ['source_id', 'status', 'nombre', 'estado', 'municipio', 'data', 'created_at'];
+  const cols = ['source_id', 'status', 'nombre', 'estado', 'municipio', 'data', 'created_at', 'name_norm', 'name_sig'];
   const tuples = rows.map(() => `(${cols.map(() => '?').join(',')})`).join(',');
   const params = [];
-  for (const r of rows) params.push(r.sourceId, r.status, r.nombre, r.estado, r.municipio, r.data, r.created_at);
+  for (const r of rows) {
+    const { name_norm, name_sig } = searchFields(r.nombre);
+    params.push(r.sourceId, r.status, r.nombre, r.estado, r.municipio, r.data, r.created_at, name_norm, name_sig);
+  }
   const sql = `INSERT INTO persons (${cols.join(',')}) VALUES ${tuples}
-    ON CONFLICT(source_id) DO UPDATE SET status=excluded.status, nombre=excluded.nombre, data=excluded.data`;
+    ON CONFLICT(source_id) DO UPDATE SET status=excluded.status, nombre=excluded.nombre, data=excluded.data, name_norm=excluded.name_norm, name_sig=excluded.name_sig`;
   await store.run(sql, params);
 }
 
@@ -145,6 +154,7 @@ async function upsertPersons(store, rows) {
 // hasta tocar una página ya sincronizada (early-stop) o el tope maxPages. Suave con la fuente.
 async function refreshDtvPersons(store, { pageSize = 100, maxPages = 60, stopWhenClean = true, log = () => {} } = {}) {
   await ensurePersonsSourceId(store);
+  await ensurePersonSearchColumns(store, { log });
   let page = 1, inserted = 0, updated = 0, unchanged = 0, scanned = 0, stoppedEarly = false;
   for (; page <= maxPages; page++) {
     let res;

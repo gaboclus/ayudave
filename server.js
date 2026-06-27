@@ -12,6 +12,8 @@ const store = require('./store');       // SQLite o Postgres según DATABASE_URL
 const storage = require('./storage');   // disco o GCS según GCS_BUCKET
 const { importDtvPersons, insertPersonsBatch, upsertPersons, mapDtvPerson, ensurePersonsSourceId, DTV_API } = require('./import-dtv'); // importación de desaparecidos del sismo
 const { getAuditSummary, auditPersons, ensureAuditColumns } = require('./audit-dtv'); // auditoría/depuración de duplicados
+const { normName, nameSignature, searchFields } = require('./text-normalize');
+const { ensurePersonSearchColumns, rankPersons } = require('./person-search'); // búsqueda tolerante a acentos/typos
 const { importAcopio } = require('./import-acopio'); // centros de acopio desde acopiovenezuela.vercel.app (auto-actualizable)
 const { searchOcrHospitals, ocrHospitalsSummary, primeOcrHospitals } = require('./import-ocr-hospitals'); // pacientes en hospitales (OCR, repo abierto)
 const { getReportes, primeReportes, SOURCE: REP_SOURCE, CATS: REP_CATS } = require('./import-reportes'); // reportes de servicios (luz/agua/medicinas...) desde reporte-ve
@@ -307,9 +309,23 @@ const api = {
     const where = ['lower(data) NOT LIKE ?']; const params = ['%"hidden":true%'];
     if (!q.dups) where.push('dup_of IS NULL');
     if (q.status) { where.push('status = ?'); params.push(q.status); }
-    if (q.q) { where.push('lower(data) LIKE ?'); params.push('%' + String(q.q).toLowerCase() + '%'); }
     const limit = Math.min(Math.max(parseInt(q.limit, 10) || 60, 1), 200);
     const offset = Math.max(parseInt(q.offset, 10) || 0, 0);
+    const raw = String(q.q || '').trim();
+    const qnorm = normName(raw);
+    if (qnorm) {
+      // Pool acotado de candidatos (nombre normalizado, firma difusa, prefijo de token,
+      // o subcadena en data) ordenado por relevancia en la app. Ver person-search.js.
+      const cand = ['name_norm LIKE ?']; const cparams = ['%' + qnorm + '%'];
+      const qsig = nameSignature(raw);
+      if (qsig) { cand.push('name_sig = ?'); cparams.push(qsig); }
+      for (const tok of qnorm.split(' ')) { if (tok.length >= 4) { cand.push('name_norm LIKE ?'); cparams.push('%' + tok.slice(0, 4) + '%'); } }
+      cand.push('lower(data) LIKE ?'); cparams.push('%' + raw.toLowerCase() + '%');
+      where.push('(' + cand.join(' OR ') + ')'); params.push(...cparams);
+      const POOL = 600;
+      const rows = await store.all(`SELECT * FROM persons WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ?`, [...params, POOL]);
+      return rankPersons(rows, qnorm, raw.toLowerCase()).slice(offset, offset + limit).map(oPerson);
+    }
     const sql = `SELECT * FROM persons WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ? OFFSET ?`;
     return (await store.all(sql, [...params, limit, offset])).map(oPerson);
   },
@@ -327,13 +343,16 @@ const api = {
     return person;
   },
   'POST /api/persons': async (p, q, body) => {
-    const id = await store.insert('persons', { status: body.status || 'desaparecido', nombre: `${body.nombre || ''} ${body.apellido || ''}`.trim(), estado: body.estado || '', municipio: body.municipio || '', data: JSON.stringify(body), created_at: now() });
+    const nombre = `${body.nombre || ''} ${body.apellido || ''}`.trim();
+    const sf = searchFields(nombre);
+    const id = await store.insert('persons', { status: body.status || 'desaparecido', nombre, estado: body.estado || '', municipio: body.municipio || '', data: JSON.stringify(body), created_at: now(), name_norm: sf.name_norm, name_sig: sf.name_sig });
     return oPerson(await store.get('SELECT * FROM persons WHERE id=?', [id]));
   },
   'PATCH /api/persons/:id': async (p, q, body) => {
     const r = await store.get('SELECT * FROM persons WHERE id=?', [p.id]); if (!r) return err(404);
     const o = Object.assign(oPerson(r), body);
-    await store.run('UPDATE persons SET status=?,data=? WHERE id=?', [o.status, JSON.stringify(o), p.id]);
+    const sf = searchFields(`${o.nombre || ''} ${o.apellido || ''}`.trim());
+    await store.run('UPDATE persons SET status=?,data=?,name_norm=?,name_sig=? WHERE id=?', [o.status, JSON.stringify(o), sf.name_norm, sf.name_sig, p.id]);
     return o;
   },
   'POST /api/persons/:id/sightings': async (p, q, body) => {
@@ -1040,6 +1059,7 @@ server.listen(PORT, () => console.log(`AyudaVE (${store.kind}/${storage.kind}) e
     try {
       await store.init();
       await ensurePersonsSourceId(store); await ensureAuditColumns(store); // columnas source_id + dup_of
+      await ensurePersonSearchColumns(store, { log: m => console.log('[search]', m) }); // columnas name_norm/name_sig + backfill
       await importInitialCenters(); await importInitialPersons();
       if (process.env.AYUDAVE_SEED === 'on') await seed();
       console.log('Base de datos lista');
