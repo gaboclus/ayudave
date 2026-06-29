@@ -10,6 +10,7 @@
    ============================================================ */
 'use strict';
 
+const { normName, nameTokens, nameMatchRank } = require('./text-normalize');
 const SOURCE_REPO = 'https://github.com/ecrespo/OCR-data_Terremoto_Venezuela_24062026';
 const CSV_URL = process.env.OCR_HOSPITALS_CSV || 'https://raw.githubusercontent.com/ecrespo/OCR-data_Terremoto_Venezuela_24062026/main/consolidado.csv';
 
@@ -51,6 +52,7 @@ async function fetchOcrHospitals() {
       edad: (cols[2] || '').trim().replace(/^—$/, ''),
       zona: (cols[4] || '').trim().replace(/^—$/, ''),
       ced: digits(cols[3]), // SOLO para búsqueda; nunca se devuelve
+      nameNorm: normName(nombre),
     });
   }
   const byH = {};
@@ -60,19 +62,29 @@ async function fetchOcrHospitals() {
   return CACHE;
 }
 
-// Versión pública: sin cédula ni notas médicas.
+// Versión pública: la cédula (it.ced) nunca se devuelve.
 const pub = it => ({ nombre: it.nombre, hospital: it.hospital, edad: it.edad, zona: it.zona });
 
 function searchOcrHospitals(q, limit = 60, hospital = '') {
-  q = String(q || '').trim().toLowerCase();
+  const raw = String(q || '').trim();
   let list = CACHE.items;
   if (hospital) list = list.filter(it => it.hospital === hospital); // filtro exacto por centro
-  if (q) {
-    const qd = digits(q);
-    list = list.filter(it =>
-      (it.nombre + ' ' + it.hospital + ' ' + it.zona).toLowerCase().includes(q) ||
-      (qd.length >= 5 && it.ced && it.ced.includes(qd)) // buscable por cédula (no se muestra)
-    );
+  if (raw) {
+    const qnorm = normName(raw);
+    const qtokens = nameTokens(raw);
+    const qd = digits(raw);
+    const scored = [];
+    list.forEach((it, i) => {
+      if (qd.length >= 5 && it.ced && it.ced.includes(qd)) { scored.push({ it, rank: 0, i }); return; } // cédula: buscable, no devuelta
+      let rank = qnorm ? nameMatchRank(it.nameNorm, qnorm, qtokens) : 5;
+      if (rank === 5) {
+        if (qnorm && (normName(it.hospital).includes(qnorm) || normName(it.zona).includes(qnorm))) rank = 4; // por hospital/zona
+        else return;
+      }
+      scored.push({ it, rank, i });
+    });
+    scored.sort((a, b) => a.rank - b.rank || a.i - b.i); // relevancia; desempate estable
+    list = scored.map(x => x.it);
   }
   return { total: CACHE.total, matched: list.length, items: list.slice(0, Math.min(limit, 200)).map(pub), source: SOURCE_REPO };
 }

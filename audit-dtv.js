@@ -18,51 +18,13 @@
 const SOURCE = 'desaparecidosterremotovenezuela.com';
 const now = () => Date.now();
 
-/* ---------- normalización ---------- */
-const stripAccents = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
-const normName = s => stripAccents(String(s || '').toLowerCase()).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
-const nameTokens = s => normName(s).split(' ').filter(Boolean);
-// clave de nombre = palabras ordenadas (insensible al orden); null si es muy pobre para bloquear
-function fullNameKey(s) {
-  const t = nameTokens(s);
-  if (!t.length) return null;
-  const key = [...t].sort().join(' ');
-  // evita fusionar por una sola palabra corta y común (p.ej. "maria")
-  if (t.length < 2 && key.length < 6) return null;
-  return key;
-}
-// firma para bloque difuso: primeras 3 letras de cada palabra, ordenadas
-function nameSignature(s) {
-  const t = nameTokens(s).map(w => w.slice(0, 3)).sort();
-  return t.length ? t.join('') : null;
-}
+/* ---------- normalización y similitud (módulo compartido con la búsqueda) ---------- */
+const { normName, nameTokens, fullNameKey, nameSignature, similarity } = require('./text-normalize');
 function phoneKey(s) {
   const d = String(s || '').replace(/\D/g, '').replace(/^58/, '').replace(/^0+/, '');
   return d.length >= 9 ? d.slice(-10) : '';
 }
 const locTokens = s => new Set(normName(s).split(' ').filter(w => w.length >= 4));
-
-/* ---------- similitud (Levenshtein normalizado) ---------- */
-function levenshtein(a, b) {
-  if (a === b) return 0;
-  const m = a.length, n = b.length;
-  if (!m) return n; if (!n) return m;
-  let prev = new Array(n + 1); for (let j = 0; j <= n; j++) prev[j] = j;
-  for (let i = 1; i <= m; i++) {
-    let cur = [i];
-    for (let j = 1; j <= n; j++) {
-      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
-      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
-    }
-    prev = cur;
-  }
-  return prev[n];
-}
-function similarity(a, b) {
-  if (!a || !b) return 0;
-  const max = Math.max(a.length, b.length);
-  return max ? 1 - levenshtein(a, b) / max : 1;
-}
 
 /* ---------- union-find ---------- */
 function makeUF(n) {
