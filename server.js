@@ -85,6 +85,13 @@ const clearFail = phone => loginAttempts.delete(phone);
 const oCenter = r => { const o = JSON.parse(r.data); o.id = r.id; return o; };
 const oDon = r => { const o = JSON.parse(r.data); o.id = r.id; o.centerId = r.center_id; o.centerName = r.center_name; o.estado = r.estado; o.createdAt = num(r.created_at); return o; };
 const oPerson = r => { const o = JSON.parse(r.data); o.id = r.id; o.status = r.status; return o; };
+// Proyección PÚBLICA para listados (GET /api/persons): solo los campos que el
+// card/mapa necesitan. Excluye PII de contacto (contactoTel, contactoNombre,
+// relacion) y la descripción libre, para que el endpoint público no permita
+// exfiltrar en masa teléfonos y datos sensibles —incluidos los de menores—.
+// El detalle (GET /api/persons/:id) sigue devolviendo el registro completo.
+const PERSON_PUBLIC_FIELDS = ['nombre', 'apellido', 'edad', 'sexo', 'estado', 'municipio', 'parroquia', 'lugar', 'fecha', 'foto', 'demo'];
+const oPersonPublic = r => { const full = JSON.parse(r.data); const o = {}; for (const k of PERSON_PUBLIC_FIELDS) if (full[k] !== undefined) o[k] = full[k]; o.id = r.id; o.status = r.status; return o; };
 const oSight = r => { const o = JSON.parse(r.data); o.id = r.id; return o; };
 const oVol = r => { const o = JSON.parse(r.data); o.id = r.id; return o; };
 const oApp = r => ({ id: r.id, volunteer_id: r.volunteer_id, center_id: r.center_id, center_name: r.center_name, task: r.task, status: r.status });
@@ -324,10 +331,10 @@ const api = {
       where.push('(' + cand.join(' OR ') + ')'); params.push(...cparams);
       const POOL = 600;
       const rows = await store.all(`SELECT * FROM persons WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ?`, [...params, POOL]);
-      return rankPersons(rows, qnorm, raw.toLowerCase()).slice(offset, offset + limit).map(oPerson);
+      return rankPersons(rows, qnorm, raw.toLowerCase()).slice(offset, offset + limit).map(oPersonPublic);
     }
     const sql = `SELECT * FROM persons WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ? OFFSET ?`;
-    return (await store.all(sql, [...params, limit, offset])).map(oPerson);
+    return (await store.all(sql, [...params, limit, offset])).map(oPersonPublic);
   },
   'GET /api/persons/stats': async () => {
     // Conteos ya depurados (sin duplicados): dup_of IS NULL.
