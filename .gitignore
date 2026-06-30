@@ -33,3 +33,8 @@ docs/.DS_Store
 .DS_Store
 **/.DS_Store
 *.log
+
+# ── módulos de extensión privados (cargados opcionalmente por server.js si existen) ──
+extension.js
+extensions/
+public/ext/
