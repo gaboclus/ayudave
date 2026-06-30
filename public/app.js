@@ -368,6 +368,19 @@ function personCard(p) {
     </div></div>`;
 }
 
+// Tarjeta de contacto del detalle: por protección, el contacto se revela bajo petición (endpoint con rate-limit).
+function contactCardHtml(p) {
+  const c = p._contacto;
+  if (c) {
+    const tel = (c.contactoTel || '').replace(/[^0-9]/g, '');
+    return `<div class="kv"><span class="k">${esc(c.relacion || 'Contacto')}</span><span class="v">${esc(c.contactoNombre || '—')}</span></div>
+      ${tel ? `<div class="btn-row mt-16"><a class="btn sm" href="tel:${tel}">${icon('phone')}Llamar</a><a class="btn sm ghost" href="https://wa.me/58${tel.replace(/^0/, '')}" target="_blank" rel="noopener">WhatsApp</a></div>` : '<div class="muted" style="font-size:13.5px">Sin teléfono de contacto registrado.</div>'}`;
+  }
+  if (!p.tieneContacto) return '<div class="muted" style="font-size:13.5px">Sin datos de contacto registrados.</div>';
+  return `<div class="muted" style="font-size:13px">Por protección de las familias, el contacto se muestra solo bajo petición.</div>
+    <button class="btn sm ghost mt-8" data-action="reveal-contact" data-id="${p.id}">${icon('phone')}Mostrar datos de contacto</button>`;
+}
+
 function petCard(p) {
   const s = (window.PET_STATUS || {})[p.status] || { label: p.status, cls: 'muted' };
   const wa = (p.whatsapp || '').replace(/\D/g, '');
@@ -2044,7 +2057,6 @@ screens['persons-list'] = () => {
 
 screens['person-detail'] = () => {
   const p = App._person; if (!p) return notFound();
-  const tel = (p.contactoTel || '').replace(/[^0-9]/g, '');
   const sightings = p.sightings || [];
   return { tint: COLORS.person, title: `${p.nombre} ${p.apellido || ''}`, html: `
     ${p.foto ? `<img class="person-photo" src="${p.foto}" alt="${p.nombre}">` : `<div class="avatar lg">${initials((p.nombre || '') + ' ' + (p.apellido || ''))}</div>`}
@@ -2059,10 +2071,7 @@ screens['person-detail'] = () => {
     </div>
     ${p.descripcion ? `<div class="section-label">Descripción</div><div class="card"><div style="font-size:14.5px">${p.descripcion}</div></div>` : ''}
     <div class="section-label">Contacto</div>
-    <div class="card">
-      <div class="kv"><span class="k">${p.relacion || 'Contacto'}</span><span class="v">${p.contactoNombre || '—'}</span></div>
-      ${p.contactoTel ? `<div class="btn-row mt-16"><a class="btn sm" href="tel:${tel}">${icon('phone')}Llamar</a><a class="btn sm ghost" href="https://wa.me/58${tel.replace(/^0/, '')}" target="_blank" rel="noopener">WhatsApp</a></div>` : ''}
-    </div>
+    <div class="card" id="contact-card">${contactCardHtml(p)}</div>
     <div class="section-label">Avistamientos e información</div>
     <div class="card">${sightings.length ? `<div class="thread">${sightings.map(s => `<div class="thread-item"><div class="ti-date">${s.date || ''} · ${s.lugar || ''}</div><div class="ti-text">${s.detalle || ''}${s.contacto ? ' — ' + s.contacto : ''}</div></div>`).join('')}</div>` : '<div class="muted" style="font-size:14px">Aún no hay reportes de avistamiento.</div>'}</div>
     <div class="sticky-cta">
@@ -3030,6 +3039,19 @@ const actions = {
     if (!t.dataset.id) return;
     try { App._person = await API.person(t.dataset.id); go('person-detail'); }
     catch { toast('No se pudo abrir el reporte', false); }
+  },
+  async 'reveal-contact'(t) {
+    if (!t.dataset.id) return;
+    const btn = t.closest('button'); if (btn) { btn.disabled = true; btn.textContent = 'Cargando…'; }
+    try {
+      const c = await API.personContacto(t.dataset.id);
+      if (App._person && String(App._person.id) === String(t.dataset.id)) App._person._contacto = c;
+      const card = document.getElementById('contact-card');
+      if (card && App._person) card.innerHTML = contactCardHtml(App._person);
+    } catch (e) {
+      if (btn) { btn.disabled = false; btn.innerHTML = icon('phone') + 'Mostrar datos de contacto'; }
+      toast(/→ 429|429/.test((e && e.message) || '') ? 'Demasiadas solicitudes, espera unos minutos.' : 'No se pudo cargar el contacto.', false);
+    }
   },
   'person-share'(t) { const p = DB.persons.find(x => String(x.id) === String(t.dataset.id)) || App._person; if (p) sharePerson(p); },
   'person-type'(t) { App.ctx.personType = t.dataset.k; go('person-create'); },

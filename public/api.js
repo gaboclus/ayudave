@@ -43,6 +43,7 @@ window.API = {
   persons(qs) { return this._get('/persons' + (qs ? '?' + qs : '')); },
   personStats() { return this._get('/persons/stats'); },
   person(id) { return this._get('/persons/' + id); },
+  personContacto(id) { return this._get('/persons/' + id + '/contacto'); }, // datos de contacto bajo petición (rate-limited)
   createPerson(d) { return this._send('POST', '/persons', d); },
   patchPerson(id, d) { return this._send('PATCH', '/persons/' + id, d); },
   addSighting(id, d) { return this._send('POST', `/persons/${id}/sightings`, d); },
