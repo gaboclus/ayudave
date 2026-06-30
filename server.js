@@ -85,6 +85,15 @@ const clearFail = phone => loginAttempts.delete(phone);
 const oCenter = r => { const o = JSON.parse(r.data); o.id = r.id; return o; };
 const oDon = r => { const o = JSON.parse(r.data); o.id = r.id; o.centerId = r.center_id; o.centerName = r.center_name; o.estado = r.estado; o.createdAt = num(r.created_at); return o; };
 const oPerson = r => { const o = JSON.parse(r.data); o.id = r.id; o.status = r.status; return o; };
+/* Proyección PÚBLICA (allowlist): SOLO los campos que la lista/tarjeta/mapa muestran.
+   Excluye PII de contacto (contactoTel, contactoNombre, relacion) y descripcion para que
+   el listado público NO sea volcable en masa. El detalle /:id sigue usando oPerson (completo)
+   para que Llamar/WhatsApp funcionen. Allowlist (no denylist): campos nuevos no se filtran por defecto. */
+const PERSON_PUBLIC_FIELDS = ['nombre', 'apellido', 'edad', 'sexo', 'nacionalidad', 'estado', 'municipio', 'parroquia', 'lugar', 'fecha', 'foto', 'demo', 'coords'];
+const publicPerson = o => { const out = { id: o.id, status: o.status }; for (const k of PERSON_PUBLIC_FIELDS) if (o[k] !== undefined && o[k] !== null) out[k] = o[k]; return out; };
+const oPersonPublic = r => publicPerson(oPerson(r));
+// Datos de contacto de la familia: NO van en el detalle enumerable; se revelan aparte (con rate-limit).
+const PERSON_CONTACT_FIELDS = ['contactoTel', 'contactoNombre', 'relacion'];
 const oSight = r => { const o = JSON.parse(r.data); o.id = r.id; return o; };
 const oVol = r => { const o = JSON.parse(r.data); o.id = r.id; return o; };
 const oApp = r => ({ id: r.id, volunteer_id: r.volunteer_id, center_id: r.center_id, center_name: r.center_name, task: r.task, status: r.status });
@@ -327,7 +336,7 @@ const api = {
       return rankPersons(rows, qnorm, raw.toLowerCase()).slice(offset, offset + limit).map(oPerson);
     }
     const sql = `SELECT * FROM persons WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ? OFFSET ?`;
-    return (await store.all(sql, [...params, limit, offset])).map(oPerson);
+    return (await store.all(sql, [...params, limit, offset])).map(oPersonPublic); // allowlist: sin PII de contacto
   },
   'GET /api/persons/stats': async () => {
     // Conteos ya depurados (sin duplicados): dup_of IS NULL.
@@ -339,8 +348,18 @@ const api = {
   'GET /api/persons/:id': async (p) => {
     const r = await store.get('SELECT * FROM persons WHERE id=?', [p.id]); if (!r) return err(404);
     const person = oPerson(r);
+    // El contacto de la familia NO se incluye aquí (endpoint enumerable): se revela aparte con rate-limit.
+    person.tieneContacto = !!(person.contactoTel || person.contactoNombre);
+    for (const k of PERSON_CONTACT_FIELDS) delete person[k];
     person.sightings = (await store.all('SELECT * FROM sightings WHERE person_id=? ORDER BY id DESC', [p.id])).map(oSight);
     return person;
+  },
+  // Revela el contacto de la familia bajo petición explícita y con límite estricto (anti-scraping).
+  'GET /api/persons/:id/contacto': async (p, q, body, req) => {
+    if (revealLimited(clientIp(req))) return err(429, 'Demasiadas solicitudes de contacto. Intenta en unos minutos.');
+    const r = await store.get('SELECT * FROM persons WHERE id=?', [p.id]); if (!r) return err(404);
+    const o = oPerson(r);
+    return { contactoTel: o.contactoTel || '', contactoNombre: o.contactoNombre || '', relacion: o.relacion || '' };
   },
   'POST /api/persons': async (p, q, body) => {
     const nombre = `${body.nombre || ''} ${body.apellido || ''}`.trim();
@@ -801,7 +820,7 @@ const api = {
     // Hospitales por nombre (si lo hay).
     let hospitals = [];
     if (name) { try { const h = await searchOcrHospitals(name, 15); hospitals = Array.isArray(h) ? h : (h.results || h.items || []); } catch {} }
-    return { analysis, usedPhoto, needsKey: hasImg && !assistant.hasKey(), aiError, match, bestId, persons: persons.slice(0, 30), hospitals };
+    return { analysis, usedPhoto, needsKey: hasImg && !assistant.hasKey(), aiError, match, bestId, persons: persons.slice(0, 30).map(publicPerson), hospitals }; // allowlist: sin PII de contacto
   },
 
   // ---- recursos (bases de datos, grupos WhatsApp/Telegram, galería, enlaces) ----
@@ -911,6 +930,13 @@ function rateLimited(ip) {
   if (!w || t > w.reset) { if (RL.size > 5000) RL.clear(); RL.set(ip, { count: 1, reset: t + 60000 }); return false; }
   w.count++; return w.count > 120;
 }
+// Limitador estricto para revelar contactos de familias: máx 25 por IP cada 10 min (evita scraping masivo).
+const REVEAL = new Map();
+function revealLimited(ip) {
+  const t = Date.now(); const w = REVEAL.get(ip);
+  if (!w || t > w.reset) { if (REVEAL.size > 5000) REVEAL.clear(); REVEAL.set(ip, { count: 1, reset: t + 600000 }); return false; }
+  w.count++; return w.count > 25;
+}
 function securityHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -970,10 +996,12 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (pathname.startsWith('/uploads/')) return serveStatic(res, UPLOADS, pathname.slice('/uploads/'.length));
+  // Fotos subidas (personas/mascotas/centros): legibles por la app, pero NO indexables por buscadores ni rastreadores.
+  if (pathname.startsWith('/uploads/')) { res.setHeader('X-Robots-Tag', 'noindex, noimageindex, nofollow'); return serveStatic(res, UPLOADS, pathname.slice('/uploads/'.length)); }
   if (pathname.startsWith('/img/') && storage.kind === 'gcs') {
     const objectName = decodeURIComponent(pathname.slice('/img/'.length)).replace(/^\/+/, '');
     if (!objectName || objectName.includes('..')) return send(res, 400, 'Bad request', 'text/plain');
+    res.setHeader('X-Robots-Tag', 'noindex, noimageindex, nofollow');
     storage.bucket.file(objectName).createReadStream()
       .on('error', () => { if (!res.headersSent) send(res, 404, 'No encontrado', 'text/plain'); })
       .on('response', () => { res.setHeader('Content-Type', MIME[path.extname(objectName)] || 'application/octet-stream'); res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); })
