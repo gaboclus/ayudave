@@ -7,9 +7,10 @@ const fs = require('fs');
 
 const rid = () => Math.random().toString(36).slice(2, 8);
 function decode(dataUrl) {
-  const m = /^data:(image\/(\w+));base64,(.+)$/s.exec(dataUrl || '');
+  const m = /^data:(image\/(\w+)|application\/(pdf));base64,(.+)$/s.exec(dataUrl || '');
   if (!m) return null;
-  return { ext: m[2] === 'jpeg' ? 'jpg' : m[2], mime: m[1], buf: Buffer.from(m[3], 'base64') };
+  const ext = m[2] ? (m[2] === 'jpeg' ? 'jpg' : m[2]) : 'pdf';
+  return { ext, mime: m[1], buf: Buffer.from(m[4], 'base64') };
 }
 
 if (process.env.GCS_BUCKET) {

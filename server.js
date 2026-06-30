@@ -12,15 +12,18 @@ const store = require('./store');       // SQLite o Postgres según DATABASE_URL
 const storage = require('./storage');   // disco o GCS según GCS_BUCKET
 const { importDtvPersons, insertPersonsBatch, upsertPersons, mapDtvPerson, ensurePersonsSourceId, DTV_API } = require('./import-dtv'); // importación de desaparecidos del sismo
 const { getAuditSummary, auditPersons, ensureAuditColumns } = require('./audit-dtv'); // auditoría/depuración de duplicados
-const { normName, nameSignature, searchFields } = require('./text-normalize');
-const { ensurePersonSearchColumns, rankPersons } = require('./person-search'); // búsqueda tolerante a acentos/typos
 const { importAcopio } = require('./import-acopio'); // centros de acopio desde acopiovenezuela.vercel.app (auto-actualizable)
+const { importCentrosApis } = require('./import-centros-apis'); // centros desde APIs públicas AcopioVE + ResponseGrid (dedup)
 const { searchOcrHospitals, ocrHospitalsSummary, primeOcrHospitals } = require('./import-ocr-hospitals'); // pacientes en hospitales (OCR, repo abierto)
 const { getReportes, primeReportes, SOURCE: REP_SOURCE, CATS: REP_CATS } = require('./import-reportes'); // reportes de servicios (luz/agua/medicinas...) desde reporte-ve
 const { getEdificios, primeEdificios, edificiosCount, SOURCE: EDIF_SOURCE } = require('./import-edificios'); // edificios afectados desde terremotovenezuela.com
+const { getSupplies, primeSupplies, suppliesCount, SOURCE: SUP_SOURCE, ATTRIBUTION: SUP_ATTR } = require('./import-supplies'); // catálogo maestro de insumos (ReliefHub/ResponseGrid)
 const { importDirectorio, getDirectorio } = require('./import-directorio'); // directorio de emergencia (hospitales/ambulancias/bomberos) desde redayudavenezuela.com
 const { getSismos, primeSismos } = require('./import-sismos'); // sismos/réplicas recientes (USGS)
 const assistant = require('./assistant-gemini'); // asistente IA: buscar persona por foto (Gemini)
+// Carga opcional de módulos de extensión privados (no incluidos en el repo open source).
+function optionalModule(name) { try { return require(name); } catch { return null; } }
+const ext = optionalModule('./extension'); // módulo de extensión opcional (rutas/tablas propias); ausente en la versión open source
 
 const ROOT = __dirname;
 const PUBLIC = path.join(ROOT, 'public');
@@ -105,18 +108,30 @@ const ownsCenter = (me, c) => !!(me && (me.admin || (c && c.ownerId && c.ownerId
 function err(code, msg) { const e = new Error(msg || 'error'); e.code = code; throw e; }
 /* ---- Logística por centro (entradas/salidas/beneficiarios) ---- */
 const oMovement = r => { const o = JSON.parse(r.data); o.id = r.id; o.centerId = r.center_id; o.type = r.type; o.createdAt = num(r.created_at); return o; };
+const r2 = n => Math.round(n * 100) / 100;
 function summarizeMovements(movs) {
   const inv = {}; let entradas = 0, salidas = 0, despachos = 0, familias = 0, personas = 0;
+  let kgEntrada = 0, kgSalida = 0; const porCat = {}; // peso por categoría (neto en stock)
   const today = new Date().toISOString().slice(0, 10);
-  const hoy = { entradas: 0, salidas: 0, familias: 0, personas: 0 };
+  const hoy = { entradas: 0, salidas: 0, familias: 0, personas: 0, kgEntrada: 0, kgSalida: 0 };
   for (const m of movs) {
     const isToday = new Date(m.createdAt || 0).toISOString().slice(0, 10) === today;
     if (m.type === 'entrada' || m.type === 'salida') {
+      const sign = m.type === 'entrada' ? 1 : -1;
       for (const it of (m.items || [])) {
-        const k = (it.insumo || '').trim(); if (!k) continue;
-        inv[k] = inv[k] || { insumo: k, unidad: it.unidad || '', cantidad: 0 };
-        inv[k].cantidad += (m.type === 'entrada' ? num(it.cantidad) : -num(it.cantidad));
-        if (it.unidad && !inv[k].unidad) inv[k].unidad = it.unidad;
+        const insumo = (it.insumo || '').trim(); if (!insumo) continue;
+        const conc = (it.concentracion || '').trim();
+        const cat = it.categoria || 'otros';
+        // clave de inventario: distingue concentración (Acetaminofén 600 ≠ 500) y unidad
+        const key = (insumo + (conc ? ' ' + conc : '')).toLowerCase() + '|' + (it.unidad || '').toLowerCase();
+        inv[key] = inv[key] || { insumo, concentracion: conc, presentacion: it.presentacion || '', forma: it.forma || '', categoria: cat, unidad: it.unidad || '', cantidad: 0, kg: 0 };
+        inv[key].cantidad += sign * num(it.cantidad);
+        inv[key].kg += sign * num(it.pesoKg);
+        if (it.unidad && !inv[key].unidad) inv[key].unidad = it.unidad;
+        const kg = num(it.pesoKg);
+        porCat[cat] = (porCat[cat] || 0) + sign * kg;
+        if (m.type === 'entrada') { kgEntrada += kg; if (isToday) hoy.kgEntrada += kg; }
+        else { kgSalida += kg; if (isToday) hoy.kgSalida += kg; }
       }
       if (m.type === 'entrada') { entradas++; if (isToday) hoy.entradas++; }
       else { salidas++; if (m.destino) despachos++; if (isToday) hoy.salidas++; }
@@ -125,8 +140,20 @@ function summarizeMovements(movs) {
       if (isToday) { hoy.familias += num(m.familias); hoy.personas += num(m.personas); }
     }
   }
-  const inventario = Object.values(inv).filter(x => x.cantidad !== 0).sort((a, b) => b.cantidad - a.cantidad);
-  return { inventario, totals: { entradas, salidas, despachos, familias, personas, items: inventario.length }, hoy };
+  const inventario = Object.values(inv).filter(x => x.cantidad !== 0 || Math.abs(x.kg) > 0.001)
+    .map(x => ({ ...x, kg: r2(x.kg) })).sort((a, b) => b.cantidad - a.cantidad);
+  const kgStock = kgEntrada - kgSalida;
+  Object.keys(porCat).forEach(k => porCat[k] = r2(porCat[k]));
+  return {
+    inventario,
+    totals: {
+      entradas, salidas, despachos, familias, personas, items: inventario.length,
+      kgStock: r2(kgStock), kgEntrada: r2(kgEntrada), kgSalida: r2(kgSalida),
+      toneladasStock: r2(kgStock / 1000), toneladasEntrada: r2(kgEntrada / 1000), toneladasSalida: r2(kgSalida / 1000),
+      porCategoria: porCat,
+    },
+    hoy: { ...hoy, kgEntrada: r2(hoy.kgEntrada), kgSalida: r2(hoy.kgSalida) },
+  };
 }
 
 /* Recursos compartidos (enlaces a grupos, bases de datos, galería) */
@@ -222,7 +249,13 @@ const api = {
     const data = { quien: (me && me.nombre) || '', nota: (body.nota || '').slice(0, 400) };
     if (type === 'beneficiarios') { data.familias = num(body.familias); data.personas = num(body.personas); }
     else {
-      data.items = (Array.isArray(body.items) ? body.items : []).map(it => ({ insumo: ('' + (it.insumo || '')).slice(0, 80), cantidad: num(it.cantidad), unidad: ('' + (it.unidad || '')).slice(0, 24) })).filter(it => it.insumo && it.cantidad > 0);
+      data.items = (Array.isArray(body.items) ? body.items : []).map(it => ({
+        insumo: ('' + (it.insumo || '')).slice(0, 80), cantidad: num(it.cantidad), unidad: ('' + (it.unidad || '')).slice(0, 24),
+        categoria: ['seco', 'refrigerado', 'medicina', 'higiene', 'agua', 'otros'].includes(it.categoria) ? it.categoria : 'otros',
+        pesoKg: num(it.pesoKg),
+        concentracion: ('' + (it.concentracion || '')).slice(0, 40), presentacion: ('' + (it.presentacion || '')).slice(0, 40),
+        forma: ['solido', 'liquido'].includes(it.forma) ? it.forma : '',
+      })).filter(it => it.insumo && it.cantidad > 0);
       if (!data.items.length) return err(400, 'agrega al menos un insumo con cantidad');
       if (type === 'entrada') data.origen = ('' + (body.origen || '')).slice(0, 120);
       if (type === 'salida') { data.destino = ('' + (body.destino || '')).slice(0, 120); data.estado = body.destino ? 'enviado' : ''; }
@@ -318,23 +351,9 @@ const api = {
     const where = ['lower(data) NOT LIKE ?']; const params = ['%"hidden":true%'];
     if (!q.dups) where.push('dup_of IS NULL');
     if (q.status) { where.push('status = ?'); params.push(q.status); }
+    if (q.q) { where.push('lower(data) LIKE ?'); params.push('%' + String(q.q).toLowerCase() + '%'); }
     const limit = Math.min(Math.max(parseInt(q.limit, 10) || 60, 1), 200);
     const offset = Math.max(parseInt(q.offset, 10) || 0, 0);
-    const raw = String(q.q || '').trim();
-    const qnorm = normName(raw);
-    if (qnorm) {
-      // Pool acotado de candidatos (nombre normalizado, firma difusa, prefijo de token,
-      // o subcadena en data) ordenado por relevancia en la app. Ver person-search.js.
-      const cand = ['name_norm LIKE ?']; const cparams = ['%' + qnorm + '%'];
-      const qsig = nameSignature(raw);
-      if (qsig) { cand.push('name_sig = ?'); cparams.push(qsig); }
-      for (const tok of qnorm.split(' ')) { if (tok.length >= 4) { cand.push('name_norm LIKE ?'); cparams.push('%' + tok.slice(0, 4) + '%'); } }
-      cand.push('lower(data) LIKE ?'); cparams.push('%' + raw.toLowerCase() + '%');
-      where.push('(' + cand.join(' OR ') + ')'); params.push(...cparams);
-      const POOL = 600;
-      const rows = await store.all(`SELECT * FROM persons WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ?`, [...params, POOL]);
-      return rankPersons(rows, qnorm, raw.toLowerCase()).slice(offset, offset + limit).map(oPerson);
-    }
     const sql = `SELECT * FROM persons WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ? OFFSET ?`;
     return (await store.all(sql, [...params, limit, offset])).map(oPersonPublic); // allowlist: sin PII de contacto
   },
@@ -362,16 +381,13 @@ const api = {
     return { contactoTel: o.contactoTel || '', contactoNombre: o.contactoNombre || '', relacion: o.relacion || '' };
   },
   'POST /api/persons': async (p, q, body) => {
-    const nombre = `${body.nombre || ''} ${body.apellido || ''}`.trim();
-    const sf = searchFields(nombre);
-    const id = await store.insert('persons', { status: body.status || 'desaparecido', nombre, estado: body.estado || '', municipio: body.municipio || '', data: JSON.stringify(body), created_at: now(), name_norm: sf.name_norm, name_sig: sf.name_sig });
+    const id = await store.insert('persons', { status: body.status || 'desaparecido', nombre: `${body.nombre || ''} ${body.apellido || ''}`.trim(), estado: body.estado || '', municipio: body.municipio || '', data: JSON.stringify(body), created_at: now() });
     return oPerson(await store.get('SELECT * FROM persons WHERE id=?', [id]));
   },
   'PATCH /api/persons/:id': async (p, q, body) => {
     const r = await store.get('SELECT * FROM persons WHERE id=?', [p.id]); if (!r) return err(404);
     const o = Object.assign(oPerson(r), body);
-    const sf = searchFields(`${o.nombre || ''} ${o.apellido || ''}`.trim());
-    await store.run('UPDATE persons SET status=?,data=?,name_norm=?,name_sig=? WHERE id=?', [o.status, JSON.stringify(o), sf.name_norm, sf.name_sig, p.id]);
+    await store.run('UPDATE persons SET status=?,data=? WHERE id=?', [o.status, JSON.stringify(o), p.id]);
     return o;
   },
   'POST /api/persons/:id/sightings': async (p, q, body) => {
@@ -622,7 +638,8 @@ const api = {
     const rows = centers.map(c => ({ ...c, ...summarizeMovements(byCenter[c.id] || []) }))
       .filter(c => c.totals.entradas || c.totals.salidas || c.totals.familias || c.totals.items)
       .sort((a, b) => (b.totals.entradas + b.totals.salidas) - (a.totals.entradas + a.totals.salidas));
-    const red = rows.reduce((t, c) => ({ entradas: t.entradas + c.totals.entradas, salidas: t.salidas + c.totals.salidas, despachos: t.despachos + c.totals.despachos, familias: t.familias + c.totals.familias, personas: t.personas + c.totals.personas }), { entradas: 0, salidas: 0, despachos: 0, familias: 0, personas: 0 });
+    const red = rows.reduce((t, c) => ({ entradas: t.entradas + c.totals.entradas, salidas: t.salidas + c.totals.salidas, despachos: t.despachos + c.totals.despachos, familias: t.familias + c.totals.familias, personas: t.personas + c.totals.personas, kgStock: t.kgStock + (c.totals.kgStock || 0) }), { entradas: 0, salidas: 0, despachos: 0, familias: 0, personas: 0, kgStock: 0 });
+    red.kgStock = r2(red.kgStock); red.toneladasStock = r2(red.kgStock / 1000);
     return { centros: rows, red, activos: rows.length };
   },
   // Coordinador: asigna (o quita) el admin de un centro por teléfono.
@@ -772,6 +789,7 @@ const api = {
 
   // ---- edificios afectados (daños estructurales) desde terremotovenezuela.com ----
   'GET /api/edificios': async () => { const edificios = await getEdificios(); return { edificios, source: EDIF_SOURCE, count: edificios.length }; },
+  'GET /api/supplies': async () => { const { items, categories } = await getSupplies(); return { supplies: items, categories, total: items.length, source: SUP_SOURCE, attribution: SUP_ATTR }; },
 
   // ---- directorio de emergencia (hospitales/ambulancias/bomberos) y sismos USGS ----
   'GET /api/directorio': async () => getDirectorio(store),
@@ -849,7 +867,7 @@ const api = {
 };
 
 /* ---------------- Router ---------------- */
-const compiled = Object.entries(api).map(([k, fn]) => { const [method, pat] = k.split(' '); return { method, parts: pat.split('/').filter(Boolean), fn }; });
+const compiled = Object.entries({ ...api, ...(ext && ext.routes ? ext.routes : {}) }).map(([k, fn]) => { const [method, pat] = k.split(' '); return { method, parts: pat.split('/').filter(Boolean), fn }; });
 function matchRoute(method, parts) {
   for (const r of compiled) {
     if (r.method !== method || r.parts.length !== parts.length) continue;
@@ -864,7 +882,7 @@ function matchRoute(method, parts) {
 }
 
 /* ---------------- Estáticos ---------------- */
-const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon', '.pdf': 'application/pdf' };
 function serveStatic(res, baseDir, rel) {
   const safe = path.normalize(rel).replace(/^(\.\.[/\\])+/, '');
   let file = path.join(baseDir, safe);
@@ -953,7 +971,7 @@ function securityHeaders(res) {
   ].join('; '));
 }
 // Lecturas públicas cacheables por el CDN (sin sesión).
-const isCacheableGet = pathname => (pathname.startsWith('/api/centers') || pathname === '/api/persons' || pathname === '/api/metrics' || pathname === '/api/audit' || pathname.startsWith('/api/hospitals') || pathname === '/api/reportes' || pathname === '/api/edificios');
+const isCacheableGet = pathname => (pathname.startsWith('/api/centers') || pathname === '/api/persons' || pathname === '/api/metrics' || pathname === '/api/audit' || pathname.startsWith('/api/hospitals') || pathname === '/api/reportes' || pathname === '/api/edificios' || pathname === '/api/supplies');
 
 /* ---------------- Servidor ---------------- */
 const server = http.createServer((req, res) => {
@@ -1008,6 +1026,9 @@ const server = http.createServer((req, res) => {
       .pipe(res);
     return;
   }
+  // Punto de extensión opcional: si un módulo privado registra rutas/estáticos propios, los atiende.
+  if (ext && typeof ext.serve === 'function' && ext.serve(req, res, pathname, { PUBLIC, BUILD })) return;
+
   if (pathname === '/') return serveHtml(res, req);
   // Sirve páginas .html propias (flyer, sincronizar, …) por su nombre real si existen.
   // index.html mantiene su cache-busting vía serveHtml; rutas .html sin archivo caen al SPA.
@@ -1057,6 +1078,18 @@ async function maybeRefreshAcopio() {
   } catch (e) { console.error('[acopio] refresco falló:', e.message); }
 }
 
+/* Centros desde APIs públicas (AcopioVE + ResponseGrid) — candado/cadencia propios. */
+async function maybeRefreshCentrosApis() {
+  if (!ACOPIO_ENABLED) return;
+  try {
+    const last = num(((await store.get("SELECT v FROM metrics WHERE k='centros_apis_at'")) || {}).v);
+    if (Date.now() - last < ACOPIO_INTERVAL) return;            // aún no toca
+    await store.run("INSERT INTO metrics(k,v) VALUES('centros_apis_at',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v", [now()]);
+    const res = await importCentrosApis(store, { log: m => console.log('[centros-apis]', m) });
+    console.log('[centros-apis] refresco:', JSON.stringify(res));
+  } catch (e) { console.error('[centros-apis] refresco falló:', e.message); }
+}
+
 /* Importa una vez el dataset de personas reportadas (idempotente).
    Si la tabla ya está llena, no hace nada; si quedó a medias, limpia el seed y reinserta. */
 async function importInitialPersons() {
@@ -1087,7 +1120,6 @@ server.listen(PORT, () => console.log(`AyudaVE (${store.kind}/${storage.kind}) e
     try {
       await store.init();
       await ensurePersonsSourceId(store); await ensureAuditColumns(store); // columnas source_id + dup_of
-      await ensurePersonSearchColumns(store, { log: m => console.log('[search]', m) }); // columnas name_norm/name_sig + backfill
       await importInitialCenters(); await importInitialPersons();
       if (process.env.AYUDAVE_SEED === 'on') await seed();
       console.log('Base de datos lista');
@@ -1095,12 +1127,16 @@ server.listen(PORT, () => console.log(`AyudaVE (${store.kind}/${storage.kind}) e
       if (ACOPIO_ENABLED) {
         setTimeout(maybeRefreshAcopio, 20000);
         setInterval(maybeRefreshAcopio, 10 * 60 * 1000).unref();
+        setTimeout(maybeRefreshCentrosApis, 25000);
+        setInterval(maybeRefreshCentrosApis, 10 * 60 * 1000).unref();
       }
       primeOcrHospitals(); // pacientes en hospitales (OCR) — carga en memoria + refresco cada 6h
       primeReportes(); // reportes de servicios (reporte-ve) — carga en memoria + refresco cada 1h
       primeEdificios(); // edificios afectados (terremotovenezuela.com) — carga en memoria + refresco cada 1h
+      primeSupplies(); // catálogo maestro de insumos (ReliefHub/ResponseGrid) — carga en memoria + refresco cada 12h
       await importDirectorio(store, { log: m => console.log('[directorio]', m) }); // directorio de emergencia → BD (idempotente + auditoría)
       primeSismos(); // sismos/réplicas (USGS) — carga en memoria + refresco cada 15 min
+      if (ext && typeof ext.init === 'function') await ext.init(); // módulo de extensión opcional (crea sus tablas si existe)
       return;
     }
     catch (e) { console.error(`init BD intento ${i}: ${e.message}`); await new Promise(r => setTimeout(r, 3000)); }

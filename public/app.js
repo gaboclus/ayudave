@@ -410,7 +410,7 @@ function render() {
   let header;
   if (App.current.screen === 'home') {
     header = `<header class="appbar">
-      <img class="brand-escudo" src="escudo.png" alt="Escudo de Venezuela">
+      <img class="brand-escudo" src="escudo.svg" alt="Escudo de Venezuela">
       <div class="bar-title" style="font-size:19px;letter-spacing:-.02em">Ayuda<span style="color:var(--primary)">VE</span></div>
       <button class="iconbtn" data-action="account" aria-label="Mi perfil">${icon('user')}</button>
       <button class="iconbtn" data-action="emergency" aria-label="Emergencia" style="color:var(--critica)">${icon('alert')}</button>
@@ -469,7 +469,7 @@ screens.home = () => {
   const homeStats = `
     <div class="stat-grid home-stats">
       <button class="stat" ${nav('centers-all')}><div class="num">${fmtN(m && m.centers && m.centers.total)}</div><div class="lab">Centros de acopio</div></button>
-      <button class="stat" data-action="open-hospitals"><div class="num" style="color:var(--primary)">${fmtN(m && m.hospitals && m.hospitals.total)}</div><div class="lab">Personas en hospitales</div></button>
+      <button class="stat" data-action="open-hospitals"><div class="num" style="color:var(--primary)">🏥</div><div class="lab">Personas en hospitales</div></button>
       <button class="stat" data-action="open-persons"><div class="num" style="color:var(--bad,#cf142b)">${fmtN(m && m.persons && m.persons.desaparecidos)}</div><div class="lab">Desaparecidos</div></button>
       <button class="stat" data-action="open-persons"><div class="num" style="color:var(--ok,#1c7a3e)">${fmtN(m && m.persons && m.persons.encontrados)}</div><div class="lab">Localizados</div></button>
       <button class="stat" data-action="open-edificios" style="grid-column:1/-1"><div class="num" style="color:var(--alta,#ea580c)">${fmtN(m && m.edificios && m.edificios.total)}</div><div class="lab">Edificios con daños del sismo</div></button>
@@ -502,6 +502,7 @@ screens.home = () => {
     <div class="strip">
       <button class="strip-row" ${nav('map-view')}>${icon('map')}<span class="lbl">Mapa de la situación (centros + servicios)</span><span class="ch-go">${icon('chevron')}</span></button>
       <button class="strip-row" data-action="open-edificios">${icon('building')}<span class="lbl">Edificios afectados (daños del sismo)</span><span class="ch-go">${icon('chevron')}</span></button>
+      <button class="strip-row" data-action="open-supplies">${icon('box')}<span class="lbl">Catálogo de insumos (qué se puede donar)</span><span class="ch-go">${icon('chevron')}</span></button>
       <button class="strip-row" data-action="open-directorio">${icon('alert')}<span class="lbl">Emergencias: hospitales, ambulancias, bomberos</span><span class="ch-go">${icon('chevron')}</span></button>
       <button class="strip-row" data-action="open-resources">${icon('link')}<span class="lbl">Recursos: grupos, bases de datos, galería</span><span class="ch-go">${icon('chevron')}</span></button>
       <button class="strip-row" ${nav('donate-urgent')}>${icon('alert')}<span class="lbl">Necesidades urgentes</span><span class="ch-go">${icon('chevron')}</span></button>
@@ -532,7 +533,7 @@ function disclaimer() {
 /* ========== CUENTA: login por teléfono + perfil ========== */
 screens['login'] = () => ({
   tint: COLORS.donate, title: 'Iniciar sesión', html: `
-    <div class="center-txt" style="margin:8px 0 14px"><img src="escudo.png" alt="Escudo de Venezuela" style="width:78px;height:78px;object-fit:contain"></div>
+    <div class="center-txt" style="margin:8px 0 14px"><img src="escudo.svg" alt="Escudo de Venezuela" style="width:78px;height:78px;object-fit:contain"></div>
     <div class="screen-head center-txt"><h1>Entra con tu teléfono</h1><p class="sub">Te identificamos por tu número y un PIN de 4 dígitos.</p></div>
     ${phoneField('login-phone', '')}
     <button class="btn" data-action="login-continue">${icon('chevron')}Continuar</button>
@@ -1267,22 +1268,30 @@ screens['donate-centers'] = (p) => {
    (cuántos centros hay en cada estado / municipio / parroquia)
    ============================================================ */
 const DIR_LEVELS = [
+  { key: 'pais', label: 'País' },
   { key: 'estado', label: 'Estado' },
   { key: 'municipio', label: 'Municipio' },
   { key: 'parroquia', label: 'Parroquia' },
 ];
-function dirState() { return App.dir || (App.dir = { q: '', estado: '', municipio: '', parroquia: '', group: 'estado' }); }
+function dirState() { return App.dir || (App.dir = { q: '', pais: '', estado: '', municipio: '', parroquia: '', group: 'estado' }); }
+// País venezolano (o vacío/desconocido = se asume Venezuela). estado/municipio/parroquia son dimensiones de Venezuela.
+function isVePais(p) { return !p || ('' + p).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim() === 'venezuela'; }
 
 /* Centros que cumplen los filtros activos (zona + texto libre) */
 function hasContact(c) { return !!((c.whatsapp || '').trim() || (c.instagram || '').trim()); }
 function dirFiltered() {
   const s = dirState();
   const q = (s.q || '').trim().toLowerCase();
+  // Si agrupas por estado/municipio/parroquia sin país elegido, limita a Venezuela (esas zonas son venezolanas).
+  const veScoped = !s.pais && ['estado', 'municipio', 'parroquia'].includes(s.group);
   const list = getCenters().filter(c => {
+    const cPais = c.pais ? c.pais : 'Venezuela';
+    if (s.pais && cPais !== s.pais) return false;
+    if (veScoped && !isVePais(c.pais)) return false;
     if (s.estado && c.estado !== s.estado) return false;
     if (s.municipio && c.municipio !== s.municipio) return false;
     if (s.parroquia && (c.parroquia || '') !== s.parroquia) return false;
-    if (q && ![c.name, c.estado, c.municipio, c.parroquia, c.address].filter(Boolean).join(' ').toLowerCase().includes(q)) return false;
+    if (q && ![c.name, c.pais, c.estado, c.municipio, c.parroquia, c.address].filter(Boolean).join(' ').toLowerCase().includes(q)) return false;
     return true;
   });
   // Los que tienen WhatsApp o Instagram (grupo de contacto) van primero.
@@ -1293,7 +1302,9 @@ function dirFiltered() {
 function dirCounts(list, field) {
   const map = new Map();
   for (const c of list) {
-    const v = ((c[field] || '') + '').trim() || '— Sin especificar';
+    let v = ((c[field] || '') + '').trim();
+    if (field === 'pais') v = v || 'Venezuela';        // país vacío/desconocido = Venezuela
+    v = v || '— Sin especificar';
     map.set(v, (map.get(v) || 0) + 1);
   }
   return [...map.entries()].map(([val, n]) => ({ val, n }))
@@ -1303,7 +1314,7 @@ function dirCounts(list, field) {
 function dirChipsHtml() {
   const s = dirState();
   const chips = [];
-  ['estado', 'municipio', 'parroquia'].forEach(f => {
+  ['pais', 'estado', 'municipio', 'parroquia'].forEach(f => {
     if (s[f]) chips.push(`<button class="dir-chip" data-action="dir-clear" data-field="${f}">${s[f]} ${icon('close', 14)}</button>`);
   });
   if ((s.q || '').trim()) chips.push(`<button class="dir-chip" data-action="dir-clear" data-field="q">“${s.q.trim()}” ${icon('close', 14)}</button>`);
@@ -1325,7 +1336,8 @@ function dirTableHtml() {
       ${pickable ? `<span class="dr-go">${icon('chevron', 16)}</span>` : ''}
     </button>`;
   }).join('') : `<div class="empty sm">${icon('inbox')}<p>Sin centros con estos filtros.</p></div>`;
-  return `<div class="section-label">Centros por ${lvl.label.toLowerCase()} · ${rows.length} ${s.group === 'estado' ? 'estado(s)' : s.group === 'municipio' ? 'municipio(s)' : 'parroquia(s)'}</div>
+  const unit = { pais: 'país(es)', estado: 'estado(s)', municipio: 'municipio(s)', parroquia: 'parroquia(s)' }[s.group] || '';
+  return `<div class="section-label">Centros por ${lvl.label.toLowerCase()} · ${rows.length} ${unit}</div>
     <div class="dir-seg">${seg}</div>
     <div class="dir-table">${body}</div>`;
 }
@@ -1753,7 +1765,11 @@ screens['center-panel'] = (p) => {
 /* ===== Logística por centro: entradas / salidas / beneficiarios ===== */
 function captureMovItems() {
   const n = (App.ctx.movItems || []).length; const items = [];
-  for (let i = 0; i < n; i++) items.push({ insumo: val('mi-' + i + '-insumo'), cantidad: val('mi-' + i + '-cant'), unidad: val('mi-' + i + '-uni') });
+  for (let i = 0; i < n; i++) items.push({
+    insumo: val('mi-' + i + '-insumo'), cantidad: val('mi-' + i + '-cant'), unidad: val('mi-' + i + '-uni'),
+    categoria: val('mi-' + i + '-cat') || 'otros', pesoKg: val('mi-' + i + '-peso'),
+    concentracion: val('mi-' + i + '-conc'), presentacion: val('mi-' + i + '-pres'), forma: val('mi-' + i + '-forma'),
+  });
   App.ctx.movItems = items.length ? items : [{}]; return App.ctx.movItems;
 }
 // Identidad anónima por dispositivo (para que un usuario sin registro vea sus donaciones)
@@ -1787,8 +1803,20 @@ screens['center-logistica'] = (p) => {
       <button class="btn" style="background:var(--bad,#cf142b)" data-action="mov-open" data-id="${m.center.id}" data-type="salida">${icon('truck')}Salida</button>
     </div>
     <button class="btn ghost block mt-8" data-action="mov-open" data-id="${m.center.id}" data-type="beneficiarios">${icon('users')}Registrar beneficiarios (familias atendidas)</button>
+    ${(m.totals && (m.totals.kgStock || m.totals.toneladasSalida)) ? `
+    <div class="section-label">Peso · toneladas</div>
+    <div class="card">
+      <div class="kv"><span class="k">En stock</span><span class="v"><b>${m.totals.toneladasStock} t</b><span class="muted" style="font-weight:400"> · ${m.totals.kgStock} kg</span></span></div>
+      <div class="kv"><span class="k">Total recibido</span><span class="v">${m.totals.toneladasEntrada} t</span></div>
+      <div class="kv"><span class="k">Total despachado</span><span class="v">${m.totals.toneladasSalida} t</span></div>
+      ${Object.entries(m.totals.porCategoria || {}).filter(([, v]) => Math.abs(v) > 0.001).map(([k, v]) => `<div class="kv"><span class="k" style="padding-left:10px">· ${(window.ITEM_CAT_LABEL || {})[k] || k}</span><span class="v">${v} kg</span></div>`).join('')}
+    </div>` : ''}
     <div class="section-label">Inventario actual</div>
-    <div class="card">${inv.length ? inv.map(x => `<div class="kv"><span class="k">${x.insumo}</span><span class="v"><b>${x.cantidad}</b>${x.unidad ? ' ' + x.unidad : ''}</span></div>`).join('') : '<div class="muted" style="font-size:14px">Aún sin movimientos. Registra una entrada.</div>'}</div>
+    <div class="card">${inv.length ? inv.map(x => {
+    const nombre = x.insumo + (x.concentracion ? ' ' + x.concentracion : '');
+    const catL = (window.ITEM_CAT_LABEL || {})[x.categoria] || '';
+    return `<div class="kv"><span class="k">${esc(nombre)}${catL ? ` <span class="badge muted" style="font-size:10px">${catL}</span>` : ''}</span><span class="v"><b>${x.cantidad}</b>${x.unidad ? ' ' + x.unidad : ''}${x.kg ? `<span class="muted" style="font-weight:400"> · ${x.kg} kg</span>` : ''}</span></div>`;
+  }).join('') : '<div class="muted" style="font-size:14px">Aún sin movimientos. Registra una entrada.</div>'}</div>
     <button class="btn outline block mt-8" data-action="logi-report">${icon('share')}Compartir reporte del día</button>
     <div class="section-label">Movimientos recientes</div>
     <div class="card">${movs.length ? movs.slice(0, 40).map(movRow).join('') : '<div class="muted" style="font-size:14px">Sin movimientos todavía.</div>'}</div>
@@ -1800,12 +1828,28 @@ screens['mov-form'] = (p) => {
   const type = p.type, id = p.id;
   const titles = { entrada: 'Registrar entrada', salida: 'Registrar salida / despacho', beneficiarios: 'Registrar beneficiarios' };
   const items = (App.ctx.movItems && App.ctx.movItems.length) ? App.ctx.movItems : (App.ctx.movItems = [{}]);
-  const itemsHtml = items.map((it, i) => `<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
-    <input class="input" id="mi-${i}-insumo" list="insumos-dl" placeholder="Insumo" value="${(it.insumo || '').replace(/"/g, '&quot;')}" style="flex:2;min-width:0">
-    <input class="input" id="mi-${i}-cant" type="number" inputmode="decimal" placeholder="Cant." value="${it.cantidad || ''}" style="width:70px">
-    <input class="input" id="mi-${i}-uni" placeholder="Unid." value="${(it.unidad || '').replace(/"/g, '&quot;')}" style="width:76px">
-    ${items.length > 1 ? `<button class="iconbtn" data-action="mov-del-item" data-i="${i}" aria-label="Quitar" style="width:36px;height:36px;min-width:36px">${icon('close')}</button>` : ''}
-  </div>`).join('');
+  const cats = window.ITEM_CATS || [];
+  const itemsHtml = items.map((it, i) => {
+    const cat = it.categoria || 'otros';
+    const med = cat === 'medicina';
+    return `<div class="card" style="padding:10px;margin-bottom:8px">
+      <div style="display:flex;gap:6px;align-items:center">
+        <input class="input" id="mi-${i}-insumo" list="insumos-dl" placeholder="Insumo" value="${esc(it.insumo || '')}" style="flex:2;min-width:0">
+        <input class="input" id="mi-${i}-cant" type="number" inputmode="decimal" placeholder="Cant." value="${it.cantidad || ''}" style="width:62px">
+        <input class="input" id="mi-${i}-uni" placeholder="Unid." value="${esc(it.unidad || '')}" style="width:62px">
+        ${items.length > 1 ? `<button class="iconbtn" data-action="mov-del-item" data-i="${i}" aria-label="Quitar" style="width:34px;height:34px;min-width:34px">${icon('close')}</button>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+        <select class="select" id="mi-${i}-cat" onchange="captureMovItems();render()" style="flex:1">${cats.map(c => `<option value="${c.k}" ${c.k === cat ? 'selected' : ''}>${c.label}</option>`).join('')}</select>
+        <input class="input" id="mi-${i}-peso" type="number" inputmode="decimal" placeholder="Peso kg" value="${it.pesoKg || ''}" style="width:92px" title="Peso total en kg de esta partida (para calcular toneladas)">
+      </div>
+      ${med ? `<div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+        <input class="input" id="mi-${i}-conc" placeholder="Concentración (ej. 600 mg)" value="${esc(it.concentracion || '')}" style="flex:1;min-width:0">
+        <input class="input" id="mi-${i}-pres" list="pres-dl" placeholder="Presentación" value="${esc(it.presentacion || '')}" style="width:104px">
+        <select class="select" id="mi-${i}-forma" style="width:96px"><option value="">Forma</option>${(window.MED_FORMAS || []).map(f => `<option value="${f.k}" ${f.k === (it.forma || '') ? 'selected' : ''}>${f.label}</option>`).join('')}</select>
+      </div>` : ''}
+    </div>`;
+  }).join('');
   return { tint: COLORS.center, title: titles[type] || 'Registrar', html: `
     <div class="screen-head"><h1>${titles[type] || 'Registrar'}</h1><p class="sub">Queda guardado al instante (adiós al lápiz).</p></div>
     ${type === 'beneficiarios' ? `
@@ -1814,7 +1858,9 @@ screens['mov-form'] = (p) => {
         <div class="field"><label>Personas (aprox.)</label><input class="input" id="mov-personas" type="number" inputmode="numeric" placeholder="0"></div>
       </div>` : `
       <div class="section-label">Insumos</div>
+      <p class="muted" style="font-size:12px;margin:-4px 0 8px">Elige la <b>categoría</b> y pon el <b>peso en kg</b> de cada partida para calcular toneladas. En medicinas, indica concentración y presentación.</p>
       <datalist id="insumos-dl">${NEEDS.map(n => `<option value="${n.label}">`).join('')}</datalist>
+      <datalist id="pres-dl">${(window.MED_PRESENT || []).map(p => `<option value="${p}">`).join('')}</datalist>
       ${itemsHtml}
       <button class="btn ghost sm" data-action="mov-add-item">${icon('plus')}Agregar otro insumo</button>
       ${type === 'entrada' ? `<div class="field mt-16"><label>¿De dónde viene? (origen)</label><input class="input" id="mov-origen" placeholder="Donante, ministerio, otro centro…"></div>` : ''}
@@ -1833,6 +1879,7 @@ screens['admin-logistica'] = () => {
     <div class="screen-head"><h1>Logística de la red</h1><p class="sub">${d.activos || 0} centro(s) con movimientos registrados.</p></div>
     <div class="stat-grid">
       ${card(red.entradas, 'Entradas')}${card(red.salidas, 'Salidas')}${card(red.despachos, 'Despachos')}${card(red.familias, 'Familias atendidas')}
+      <div class="stat" style="grid-column:1/-1"><div class="num">${red.toneladasStock || 0} t</div><div class="lab">Toneladas en stock (toda la red) · ${red.kgStock || 0} kg</div></div>
     </div>
     <div class="section-label">Por centro</div>
     ${(d.centros || []).length ? (d.centros || []).map(c => `<div class="card" style="margin-bottom:10px">
@@ -2399,6 +2446,39 @@ screens['search'] = () => ({
     <div id="srch-res">${getCenters().map(c => centerCard(c, 'donate')).join('')}</div>
   ` });
 
+/* ===== CATÁLOGO DE INSUMOS (ReliefHub / ResponseGrid) ===== */
+function supState() { return App.sup || (App.sup = { q: '' }); }
+function supItems() {
+  const d = App._supplies || { supplies: [] };
+  const q = (supState().q || '').toLowerCase().trim();
+  return (d.supplies || []).filter(i => !q || ((i.name || '') + ' ' + (i.code || '') + ' ' + (i.category || '')).toLowerCase().includes(q));
+}
+function supListHtml() {
+  const items = supItems();
+  if (!items.length) return `<div class="empty sm">${icon('inbox')}<p>Sin insumos para esa búsqueda.</p></div>`;
+  const byCat = {};
+  for (const i of items) (byCat[i.category] = byCat[i.category] || []).push(i);
+  const cats = Object.keys(byCat).sort((a, b) => a.localeCompare(b, 'es'));
+  return cats.map(cat => `<div class="section-label">${esc(cat)} · ${byCat[cat].length}</div>
+    <div class="dir-table">${byCat[cat].map(i => `<div class="dir-row" style="cursor:default">
+      <span class="dr-name">${esc(i.name)}${i.notes ? `<div class="muted" style="font-size:12px">${esc(i.notes)}</div>` : ''}</span>
+      <span class="dr-count" title="Unidad de medida">${esc(i.unit || '')}</span>
+    </div>`).join('')}</div>`).join('');
+}
+let _supT;
+function supSearch(v) { supState().q = v || ''; clearTimeout(_supT); _supT = setTimeout(() => { const el = document.getElementById('sup-list'); if (el) el.innerHTML = supListHtml(); }, 160); }
+screens['supplies-catalog'] = () => {
+  const d = App._supplies;
+  if (!d) return { tint: COLORS.donate, title: 'Catálogo de insumos', html: `<div class="empty">${icon('box')}<p>Cargando catálogo…</p></div>` };
+  const s = supState();
+  return { tint: COLORS.donate, title: 'Catálogo de insumos', html: `
+    <div class="screen-head"><h1>Catálogo de insumos</h1><p class="sub"><b>${d.total || (d.supplies || []).length}</b> insumos estandarizados en ${(d.categories || []).length} categorías. Sirve para saber qué se puede donar y cómo nombrarlo.</p></div>
+    <div class="field"><input class="input" id="sup-q" value="${esc(s.q)}" placeholder="Buscar insumo (ej. agua, pañales, gasas)…" oninput="supSearch(this.value)"></div>
+    <div id="sup-list">${supListHtml()}</div>
+    <p class="muted center-txt" style="font-size:12px;margin-top:8px">Fuente: <a href="https://responsegrid.app" target="_blank" rel="noopener">ReliefHub / ResponseGrid</a> (crisis-logistics.org) — catálogo público, se actualiza solo.</p>
+  ` };
+};
+
 function doSearch(q) {
   q = (q || '').toLowerCase().trim();
   const list = getCenters().filter(c => !q || [c.municipio, c.parroquia, c.estado, c.name].join(' ').toLowerCase().includes(q));
@@ -2718,24 +2798,26 @@ const actions = {
   'dir-group'(t) { dirState().group = t.dataset.group; render(); },
   'dir-pick'(t) {
     const s = dirState();
-    const order = ['estado', 'municipio', 'parroquia'];
+    const order = ['pais', 'estado', 'municipio', 'parroquia'];
     const i = order.indexOf(t.dataset.field);
     const val = decodeURIComponent(t.dataset.val);
     for (let j = i; j < order.length; j++) s[order[j]] = (j === i ? val : '');
-    if (order[i + 1]) s.group = order[i + 1];
+    // Tras elegir país: en Venezuela se baja a estado; en la diáspora, directo a municipio (ciudad).
+    if (t.dataset.field === 'pais') s.group = isVePais(val) ? 'estado' : 'municipio';
+    else if (order[i + 1]) s.group = order[i + 1];
     render();
   },
   'dir-clear'(t) {
     const s = dirState(), f = t.dataset.field;
     if (f === 'q') { s.q = ''; }
     else {
-      const order = ['estado', 'municipio', 'parroquia'];
+      const order = ['pais', 'estado', 'municipio', 'parroquia'];
       for (let j = order.indexOf(f); j < order.length; j++) s[order[j]] = '';
       s.group = f;
     }
     render();
   },
-  'dir-clearall'() { App.dir = { q: '', estado: '', municipio: '', parroquia: '', group: 'estado' }; render(); },
+  'dir-clearall'() { App.dir = { q: '', pais: '', estado: '', municipio: '', parroquia: '', group: 'estado' }; render(); },
 
   maps(t) { openMaps(getCenter(t.dataset.id)); },
   share(t) { shareCenter(getCenter(t.dataset.id)); },
@@ -2815,6 +2897,7 @@ const actions = {
   // Mapa de la situación: alterna capas (todo / centros / servicios)
   'map-layer'(t) { App.ctx.mapLayer = t.dataset.layer; render(); },
   async 'open-edificios'() { App.edif = { q: '', damage: '' }; go('edificios'); if (Array.isArray(App._edificios)) return; try { const d = await API.edificios(); App._edificios = (d && d.edificios) || []; if (App.current.screen === 'edificios') render(); } catch { toast('No se pudieron cargar los edificios', false); } },
+  async 'open-supplies'() { App.sup = { q: '' }; go('supplies-catalog'); if (App._supplies) return; try { App._supplies = await API.supplies(); if (App.current.screen === 'supplies-catalog') render(); } catch { toast('No se pudo cargar el catálogo de insumos', false); } },
   async 'open-directorio'() { go('directorio'); if (App._directorio) return; try { App._directorio = await API.directorio(); if (App.current.screen === 'directorio') render(); } catch { toast('No se pudo cargar el directorio', false); } },
   'edif-filter'(t) { edifState().damage = t.dataset.d; render(); },
   // Donación de insumos físicos: registra (centro + fecha/hora + donante) y suma al inventario.
@@ -2873,8 +2956,8 @@ const actions = {
     catch { toast('No se pudo actualizar', false); }
   },
   'logi-report'() {
-    const m = App._mov; if (!m) return;
-    const r = `📊 Reporte del día — ${m.center.name}\nEntradas hoy: ${m.hoy.entradas} · Salidas hoy: ${m.hoy.salidas}\nFamilias atendidas hoy: ${m.hoy.familias} (${m.hoy.personas} personas)\nInventario actual:\n${(m.inventario || []).slice(0, 30).map(x => '· ' + x.insumo + ': ' + x.cantidad + (x.unidad ? ' ' + x.unidad : '')).join('\n') || '—'}\n\nayudahumanitariavenezuela.com`;
+    const m = App._mov; if (!m) return; const t = m.totals || {};
+    const r = `📊 Reporte del día — ${m.center.name}\nEntradas hoy: ${m.hoy.entradas} · Salidas hoy: ${m.hoy.salidas}\nFamilias atendidas hoy: ${m.hoy.familias} (${m.hoy.personas} personas)\nEn stock: ${t.toneladasStock || 0} t (${t.kgStock || 0} kg) · Recibido: ${t.toneladasEntrada || 0} t · Despachado: ${t.toneladasSalida || 0} t\nInventario actual:\n${(m.inventario || []).slice(0, 30).map(x => '· ' + x.insumo + (x.concentracion ? ' ' + x.concentracion : '') + ': ' + x.cantidad + (x.unidad ? ' ' + x.unidad : '') + (x.kg ? ' (' + x.kg + ' kg)' : '')).join('\n') || '—'}\n\nayudahumanitariavenezuela.com`;
     try { navigator.clipboard.writeText(r); toast('Reporte copiado ✓'); } catch { toast('Copia manual:\n' + r); }
   },
   async 'open-admin-logistica'() { try { App._logi = await API.adminLogistics(); go('admin-logistica'); } catch { toast('Solo administradores', false); } },

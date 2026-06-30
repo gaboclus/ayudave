@@ -231,6 +231,19 @@ window.PET_FILTERS = [
 ];
 window.PET_TYPES = ['Perro', 'Gato', 'Ave', 'Otro'];
 
+/* Logística: categorías de insumos (para peso/toneladas) y medicinas */
+window.ITEM_CATS = [
+  { k: 'seco', label: 'Comida seca' },
+  { k: 'refrigerado', label: 'Refrigerado/congelado' },
+  { k: 'medicina', label: 'Medicina' },
+  { k: 'higiene', label: 'Higiene/insumos' },
+  { k: 'agua', label: 'Agua' },
+  { k: 'otros', label: 'Otros' },
+];
+window.ITEM_CAT_LABEL = window.ITEM_CATS.reduce((o, c) => (o[c.k] = c.label, o), {});
+window.MED_FORMAS = [{ k: 'solido', label: 'Sólido' }, { k: 'liquido', label: 'Líquido' }];
+window.MED_PRESENT = ['Blíster', 'Caja', 'Frasco', 'Ampolla', 'Tubo', 'Sobre', 'Unidad'];
+
 /* ---------- Qué puede aportar (define el rol del usuario) ---------- */
 window.APORTES = [
   { key: 'insumos', label: 'Donar insumos', icon: 'box' },

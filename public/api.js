@@ -60,6 +60,7 @@ window.API = {
   patchHelpRequest(id, d) { return this._send('PATCH', '/help-requests/' + id, d); },
   reportes() { return this._get('/reportes'); }, // reportes de servicios (reporte-ve), auto-sincronizados
   edificios() { return this._get('/edificios'); }, // edificios afectados (terremotovenezuela.com), auto-sincronizados
+  supplies() { return this._get('/supplies'); }, // catálogo maestro de insumos (ReliefHub/ResponseGrid)
   directorio() { return this._get('/directorio'); }, // directorio de emergencia (hospitales/ambulancias/bomberos)
   sismos() { return this._get('/sismos'); }, // sismos/réplicas recientes (USGS)
 

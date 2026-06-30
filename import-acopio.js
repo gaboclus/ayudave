@@ -176,14 +176,15 @@ async function importAcopio(store, opts = {}) {
   for (const row of existing) {
     if (keep.has(row.id)) continue;
     let d = {}; try { d = JSON.parse(row.data); } catch {}
-    const isImported = d && d.imported === true && !d.ownerId;
+    // Solo reconcilia los centros importados DE ESTA FUENTE (no toca otras APIs ni los de usuario).
+    const isImported = d && d.imported === true && !d.ownerId && d.source === SOURCE;
     if (isImported) { await store.run('DELETE FROM centers WHERE id=?', [row.id]); deleted++; }
   }
   log(`upsert=${centers.length} borrados(importados obsoletos)=${deleted}`);
   return { ok: true, fetched: rows.length, valid: centers.length, upserted: centers.length, deleted };
 }
 
-module.exports = { importAcopio, mapRow, resolveEstado, SHEET_URL, SOURCE };
+module.exports = { importAcopio, mapRow, resolveEstado, SHEET_URL, SOURCE, inferType, parseContact, NEED_RULES, noAccent, stableId };
 
 /* ---------------- CLI ---------------- */
 if (require.main === module) {
