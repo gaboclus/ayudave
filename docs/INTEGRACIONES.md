@@ -1,12 +1,12 @@
 # Guía: integrar una nueva fuente / API
 
-> Para los devs que se suman a traer datos de otras páginas (hospitales, desaparecidos, daños, refugios, etc.).
+> Para los devs que se suman a traer datos de otras páginas (centros, daños, servicios, insumos, refugios, etc.).
 > Si traes una API o un dataset de otra iniciativa, este es **todo** lo que necesitas. Una fuente nueva son ~30 líneas + 3 enganches.
 
 ## Antes de empezar: 2 reglas
 
 1. **Solo fuentes públicas/abiertas, con permiso o de uso abierto.** APIs documentadas, CSV/Sheets públicos, repos abiertos. **No** scrapear backends privados ni usar claves de otros que no estén pensadas para uso público. Si dudas, pregunta en el equipo.
-2. **Privacidad.** Publica el mínimo útil para reunificación (nombre, zona, hospital, edad, daño…). **No** publiques cédula, dirección exacta, diagnósticos ni teléfonos privados. Si un dato sensible sirve para buscar (ej. cédula), hazlo **buscable sin devolverlo** (filtra en el server, no lo mandes al cliente). Ver ejemplos en `import-ocr-hospitals.js`.
+2. **Sin datos personales.** Por protección de las personas, la plataforma **no maneja información personal**. No integres fuentes de personas ni publiques datos personales de nadie. Trae solo información no personal de la emergencia (centros, daños, servicios, insumos, sismos…).
 
 ## Decisión: ¿en memoria o en BD?
 
@@ -14,7 +14,7 @@
 |---|---|
 | Es solo lectura (no se edita en la app). | Se mezcla con datos creados por usuarios. |
 | Cambia seguido y se puede recargar entero. | Necesitas búsqueda/paginación SQL a gran escala. |
-| Ej.: edificios, reportes de servicios, sismos, hospitales OCR. | Ej.: centros de acopio, desaparecidos. |
+| Ej.: edificios, reportes de servicios, sismos, insumos. | Ej.: centros de acopio. |
 
 La mayoría de fuentes nuevas → **en memoria** (más simple). Esta guía cubre ese caso; al final está la variante BD.
 
@@ -152,7 +152,7 @@ Para cuando el dato se mezcla con lo de usuarios (centros) o necesita SQL. Mira 
 ## Checklist de PR
 
 - [ ] `node import-mifuente.js` imprime datos limpios.
-- [ ] `norm()` publica **solo** campos seguros (sin PII sensible).
+- [ ] `norm()` publica **solo** información no personal (sin datos personales).
 - [ ] URL de la fuente configurable por env (`MIFUENTE_URL`).
 - [ ] Atribución a la fuente visible en la pantalla.
 - [ ] Degradación elegante (si la fuente cae, no se rompe ni se borra data).
@@ -164,6 +164,6 @@ Para cuando el dato se mezcla con lo de usuarios (centros) o necesita SQL. Mira 
 - `import-edificios.js` — API REST documentada (LoopBack), paginada → memoria + capa de mapa.
 - `import-reportes.js` — API pública JSON con lat/lng → memoria + capa de mapa.
 - `import-sismos.js` — GeoJSON de USGS → memoria.
-- `import-ocr-hospitals.js` — CSV de un repo de GitHub → memoria; **cédula buscable sin devolverla**.
+- `import-supplies.js` — API de crisis-logistics.org/ResponseGrid → memoria (catálogo de insumos).
 - `import-acopio.js` — Google Sheet (sheet2api) → tabla `centers` con upsert + reconciliación.
-- `import-dtv.js` + `audit-dtv.js` — API → tabla `persons` con auditoría de duplicados.
+- `import-centros-apis.js` — APIs de AcopioVE + ResponseGrid → tabla `centers` con upsert + reconciliación.

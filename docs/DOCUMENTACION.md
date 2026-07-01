@@ -8,9 +8,9 @@
 
 | Objetivo | Principios de diseño |
 |---|---|
-| Reunir en un solo lugar, en tiempo real, la información dispersa que una familia o un voluntario necesita en la emergencia, y conectar a quien necesita ayuda con quien puede darla. | **Sin fricción:** buscar y donar no requieren registro; cuenta solo cuando es imprescindible. **Resistente a picos** de tráfico (no caerse en plena emergencia). **No inventamos datos:** agregamos fuentes abiertas con atribución. **Privacidad primero:** se publica el mínimo útil para reunificación. **Identidad de Venezuela**, neutral, sin colores de partidos. |
+| Reunir en un solo lugar, en tiempo real, la información dispersa que una familia necesita en la emergencia, y conectar a quien quiere donar con los centros de acopio. | **Sin fricción:** buscar y donar no requieren registro; cuenta solo cuando es imprescindible. **Resistente a picos** de tráfico (no caerse en plena emergencia). **No inventamos datos:** agregamos fuentes abiertas con atribución. **Sin datos personales:** por protección de las personas, la plataforma no maneja información personal. **Identidad de Venezuela**, neutral, sin colores de partidos. |
 
-**Qué resuelve hoy:** centros de acopio, personas desaparecidas, personas en hospitales, edificios afectados, cortes de servicios, directorio de emergencia y réplicas sísmicas — todo buscable y en un mapa, alimentado por **ocho fuentes externas** que se sincronizan solas.
+**Qué resuelve hoy:** centros de acopio, edificios afectados, cortes de servicios, directorio de emergencia, catálogo de insumos y réplicas sísmicas — todo buscable y en un mapa, alimentado por **fuentes externas** que se sincronizan solas.
 
 **Cobertura geográfica:** la base de datos incluye los 24 estados de Venezuela con municipios y parroquias en selectores en cascada; el selector destaca los estados afectados por el sismo.
 
@@ -20,23 +20,19 @@
 | Módulo | Qué permite |
 |---|---|
 | **Centros de acopio** | Buscar/filtrar por estado, municipio o parroquia; tabla de conteos por zona; ver necesidades, dirección, cómo llegar y contacto directo (WhatsApp/Instagram). Los que tienen contacto aparecen primero. |
-| **Personas desaparecidas** | Registro buscable (desaparecido/encontrado/fallecido) con auditoría de duplicados (se muestra un solo registro por persona). |
-| **Personas en hospitales** | Registro buscable para reunificación familiar; búsqueda por nombre y por cédula (sin mostrar la cédula). |
 | **Edificios afectados** | Daños estructurales con nivel (parcial/severo/total), estado, ubicación y "cómo llegar". |
 | **Mapa de la situación** | Capas combinables: centros, cortes de servicios y edificios con daños. |
 | **Directorio de emergencia** | Hospitales, bomberos, ambulancias y protección civil con teléfonos. |
+| **Catálogo de insumos** | Referencia de insumos para la respuesta a la emergencia. |
 | **Recursos** | Grupos de WhatsApp/Telegram, bases de datos y galerías curadas por el equipo. |
 | **Réplicas sísmicas** | Sismos recientes (fuente USGS). |
 
 ### 2.2 Dar ayuda
 - **Donar:** insumos físicos, Pago Móvil, transferencia bancaria, cripto (USDT/USDC) o fondo general. Donación anónima disponible. Las donaciones son **privadas** (solo el dueño del centro o un admin las ve).
-- **Ser voluntario:** registro con habilidades (carro, cargar, médico, etc.) y zona; acceso a tareas de centros que piden voluntarios.
-- **Centro de acopio:** panel para gestionar necesidades, inventario, métodos de pago, horario, pedir voluntarios/transporte, registrar **movimientos** logísticos y cerrar el centro.
-- **Pedir ayuda:** solicitudes de personas (rescate, insumos, etc.).
-- **Reportar:** personas (desaparecida/fallecida/encontrada), avistamientos y mascotas.
+- **Centro de acopio:** panel para gestionar necesidades, inventario, métodos de pago, horario, pedir transporte, registrar **movimientos** logísticos y cerrar el centro.
 
 ### 2.3 Administración / verificación
-Rol **Admin/Verificador** para verificar centros, moderar reportes, asignar admins a centros, ver el **panel de logística** y un **dashboard de métricas** (visitas, registros por hora/día, actividad). Se designa por la variable de entorno `AYUDAVE_ADMINS` (o `data/admins.json`).
+Rol **Admin/Verificador** para verificar centros, asignar admins a centros, ver el **panel de logística** y un **dashboard de métricas** (visitas, actividad). Se designa por la variable de entorno `AYUDAVE_ADMINS` (o `data/admins.json`).
 
 ### 2.4 Roles del usuario, permisos y orientación
 
@@ -44,24 +40,22 @@ Rol **Admin/Verificador** para verificar centros, moderar reportes, asignar admi
 
 | Rol | Cómo se obtiene | Qué puede hacer |
 |---|---|---|
-| **Visitante (anónimo)** | Sin cuenta | Buscar todo (centros, personas, hospitales, edificios, mapa, directorio); **donar** (incl. anónimo); **reportar** persona/mascota; **pedir ayuda**; difundir. |
-| **Usuario registrado** | Teléfono +58 + PIN | Lo anterior + guardar perfil y ver sus reportes. Al registrarse elige **"¿Qué puedes aportar?"** (`aporte`), que define su rol y sus atajos. |
+| **Visitante (anónimo)** | Sin cuenta | Buscar todo (centros, edificios, mapa, directorio, insumos); **donar** (incl. anónimo); difundir. |
+| **Usuario registrado** | Teléfono +58 + PIN | Lo anterior + guardar perfil. Al registrarse elige **"¿Qué puedes aportar?"** (`aporte`), que define su rol y sus atajos. |
 | **Donante** | `aporte` = insumos/dinero | Atajo "Donar a un centro"; métodos de pago de cada centro. |
-| **Voluntario** | `aporte` = voluntario | Registra habilidades + zona; ve y se postula a **tareas** de centros; panel de voluntario. |
 | **Transporte** | `aporte` = transporte | Atajo "Centros que necesitan transporte". |
 | **Difusión** | `aporte` = difundir | Atajo "Ver centros para difundir" + compartir. |
-| **Dueño de centro** | `aporte` = centro, o crea un centro | **Panel del centro**: necesidades, inventario, métodos de pago, horario, movimientos logísticos, pedir voluntarios/transporte, cerrar. Solo edita **sus** centros (`ownerId`). |
-| **Admin / Verificador** | Variable `AYUDAVE_ADMINS` | Verificar/moderar centros y reportes, asignar admins a centros, panel de logística, dashboard de métricas, gestionar recursos, **auditar duplicados**. |
+| **Dueño de centro** | `aporte` = centro, o crea un centro | **Panel del centro**: necesidades, inventario, métodos de pago, horario, movimientos logísticos, pedir transporte, cerrar. Solo edita **sus** centros (`ownerId`). |
+| **Admin / Verificador** | Variable `AYUDAVE_ADMINS` | Verificar centros, asignar admins a centros, panel de logística, dashboard de métricas, gestionar recursos. |
 
 > Los permisos se **hacen cumplir en el servidor** (no solo en la UI): `ownerId` para centros, rol admin para `/api/admin/*`. Ver capítulo 7.
 
-**Cómo la app orienta al usuario** — dos caminos desde el inicio:
+**Cómo la app orienta al usuario** — desde el inicio:
 
-- **Quiero ayudar** (flujo guiado): *ubicación* (`help-location`) → *"¿cómo quieres ayudar?"* (`help-how`, catálogo `HELP_WAYS`: donar insumos / Pago Móvil / cripto, ser voluntario, transporte, difundir, "no sé, muéstrame qué se necesita cerca") → **recomendación de centros en su zona** (`help-reco`, filtra por municipio→estado). El que elige *voluntario* va directo a registrarse como tal.
-- **¿Qué puedes aportar?** (al registrarse): el `aporte` se mapea a un **rol** (`roleLabel`) y el inicio muestra **atajos personalizados** (donar, ver tareas, transporte, panel de centro, difundir).
-- **Necesito ayuda**: botón **"Solicitar ayuda"** (`help-request` → tabla `help_requests`); o **reportar/buscar** a una persona (desaparecidos) o encontrarla en **hospitales**. Estas vías no requieren cuenta.
+- **Quiero ayudar** (flujo guiado): *ubicación* (`help-location`) → *"¿cómo quieres ayudar?"* (`help-how`, catálogo `HELP_WAYS`: donar insumos / Pago Móvil / cripto, transporte, difundir, "no sé, muéstrame qué se necesita cerca") → **recomendación de centros en su zona** (`help-reco`, filtra por municipio→estado).
+- **¿Qué puedes aportar?** (al registrarse): el `aporte` se mapea a un **rol** (`roleLabel`) y el inicio muestra **atajos personalizados** (donar, transporte, panel de centro, difundir).
 
-En resumen: el usuario **no tiene que entender la estructura** — la app lo lleva, según si **puede ayudar** (y cómo) o **necesita ayuda**, a la acción correcta en uno o dos toques.
+En resumen: el usuario **no tiene que entender la estructura** — la app lo lleva a la acción correcta en uno o dos toques.
 
 ## 3. Arquitectura técnica
 
@@ -122,33 +116,19 @@ El corazón del proyecto: AyudaVE **agrega datos de otras iniciativas** (todas p
 
 | Módulo | Fuente | Qué trae | Destino | Refresco |
 |---|---|---|---|---|
-| `import-dtv.js` + `audit-dtv.js` | desaparecidosterremotovenezuela.com (API) | Personas desaparecidas/encontradas | tabla `persons` | Carga + refresco; auditoría de duplicados. |
 | `import-acopio.js` | acopiovenezuela.vercel.app (Google Sheet vía sheet2api) | Centros de acopio | tabla `centers` | Auto ~1 h (en el server). |
-| `import-ocr-hospitals.js` | repo GitHub abierto (`ecrespo/OCR-…`, CSV) | Pacientes en hospitales | memoria | ~6 h. |
+| `import-centros-apis.js` | AcopioVE + crisis-logistics.org/ResponseGrid (APIs) | Centros de acopio | tabla `centers` | Auto ~1 h (en el server). |
+| `import-supplies.js` | crisis-logistics.org/ResponseGrid (API) | Catálogo de insumos | memoria | ~1 h. |
 | `import-reportes.js` | reporte-ve / ve.crafter.run (API) | Cortes de luz/agua/medicinas/comida… | memoria | ~1 h. |
 | `import-edificios.js` | terremotovenezuela.com (API documentada) | Edificios afectados | memoria | ~1 h. |
 | `import-directorio.js` | redayudavenezuela.com | Directorio de emergencia | tabla `directory` | Según fuente. |
 | `import-sismos.js` | USGS (earthquake.usgs.gov) | Sismos/réplicas | memoria | Periódico. |
 
-> **Cómo agregar una fuente nueva** (lo que harán los devs que se suman, en ~30 líneas): ver **`docs/INTEGRACIONES.md`**. Reglas: solo fuentes públicas/abiertas y **privacidad mínima** (no publicar cédula, dirección exacta, diagnósticos ni teléfonos privados; si un dato sensible sirve para buscar, hacerlo buscable **sin devolverlo**).
+> **Cómo agregar una fuente nueva** (lo que harán los devs que se suman, en ~30 líneas): ver **`docs/INTEGRACIONES.md`**. Reglas: solo fuentes públicas/abiertas y **sin datos personales** (la plataforma no maneja información personal).
 
 ### 4.1 Flujo de una fuente, de punta a punta
 
-`fetch` (con `User-Agent` propio) → `norm()`/`mapRow()` que **normaliza al esquema mínimo y seguro** de AyudaVE → **caché en memoria** o **upsert en BD** → se sirve por un endpoint público cacheable → **auto-refresco** periódico. Si la fuente cae, se conserva la última copia buena (no se rompe ni se borra nada). La URL de cada fuente es configurable por variable de entorno, y cada módulo trae un **CLI de prueba** (`node import-x.js`).
-
-### 4.2 Auditoría y depuración de duplicados (personas)
-
-La fuente de desaparecidos trae **la misma persona publicada muchas veces** (distintos reportantes). `audit-dtv.js` la depura para mostrar **un solo registro por persona** sin perder información:
-
-1. **Alcance:** solo filas de `persons` con `source_id` (las importadas de esa fuente).
-2. **Normalización:** nombre en minúsculas, sin acentos ni puntuación. **Clave de nombre** = palabras **ordenadas** (insensible al orden de los apellidos). **Firma difusa** = primeras 3 letras de cada palabra, ordenadas (para agrupar typos).
-3. **El teléfono NO agrupa.** Es el del *reportante*: un reportante reporta a varias personas, y a una persona la reportan varios. El teléfono solo **corrobora** dentro del bloque difuso.
-4. **Bloque exacto:** misma clave de nombre → se unen, **salvo** que las edades difieran **>10 años** (mismo nombre, personas distintas).
-5. **Bloque difuso (typos):** misma firma + **similitud de Levenshtein ≥ 0.9** + edad compatible, y al menos una corroboración: edad casi igual (≤2), mismo teléfono, o **zona compartida**.
-6. **Agrupación con union-find**; por grupo se elige el registro **canónico** = el más completo (foto + descripción + teléfono + edad + lugar; desempate: el más antiguo). El resto se marca con **`dup_of` = `source_id` del canónico**.
-7. **Resultado:** el listado público filtra `dup_of IS NULL` (un registro por persona); el endpoint `GET /api/audit` reporta los números reales (total, duplicados, únicos, grupos, %, ejemplos).
-
-**Ejecución:** `node audit-dtv.js` (solo audita, no escribe) · `node audit-dtv.js --apply` (marca `dup_of` + guarda `audit_at` en `metrics`). En producción puede correr tras cada refresco (`AUDIT_ON_REFRESH`). Es **idempotente y reversible** (limpia `dup_of` y re-evalúa cada vez).
+`fetch` (con `User-Agent` propio) → `norm()`/`mapRow()` que **normaliza al esquema mínimo** de AyudaVE → **caché en memoria** o **upsert en BD** → se sirve por un endpoint público cacheable → **auto-refresco** periódico. Si la fuente cae, se conserva la última copia buena (no se rompe ni se borra nada). La URL de cada fuente es configurable por variable de entorno, y cada módulo trae un **CLI de prueba** (`node import-x.js`).
 
 ## 5. Modelo de datos (base de datos)
 
@@ -181,24 +161,14 @@ ON CONFLICT(id) DO UPDATE SET name=excluded.name, status=excluded.status, …, d
 
 ### 5.3 Tablas
 
-**15 tablas.** Para cada una: columnas (las indexables) y, cuando aplica, el contenido del JSON `data`.
+Para cada tabla: columnas (las indexables) y, cuando aplica, el contenido del JSON `data`.
 
 **`centers`** — centros de acopio (importados + creados por usuarios).
 Columnas: `id TEXT PK, name, status, estado, municipio, parroquia, distance, data, created_at`.
-`data`: `{ name, type, status, estado, municipio, parroquia, address, reference, coords:{lat,lng}, needs:[{key,level}], needsText, accepts:[], notAccepts:[], horario, responsable, responsableApellido, whatsapp, phones:[], instagram, contacto, foto, crypto:[{red,wallet}], inventory:[{key,label,qty}], stats:{reportadas,confirmadas,entregadas,voluntarios}, updates:[{type,text,date}], pagomovil:{...}, transferencia:{...}, source, imported, ownerId, ownerPhone }`.
+`data`: `{ name, type, status, estado, municipio, parroquia, address, reference, coords:{lat,lng}, needs:[{key,level}], needsText, accepts:[], notAccepts:[], horario, responsable, responsableApellido, whatsapp, phones:[], instagram, contacto, foto, crypto:[{red,wallet}], inventory:[{key,label,qty}], stats:{reportadas,confirmadas,entregadas}, updates:[{type,text,date}], pagomovil:{...}, transferencia:{...}, source, imported, ownerId, ownerPhone }`.
 > `ownerId`/`ownerPhone` son privados: se ocultan en la lectura pública (`publicCenter`).
 
-**`persons`** — personas reportadas (desaparecida/encontrada/fallecida).
-Columnas: `id PK, status, nombre, estado, municipio, data, created_at` (+ migradas: `source_id`, `dup_of`).
-`data`: `{ status, nombre, apellido, edad, sexo, estado, municipio, parroquia, lugar, fecha, descripcion, contactoNombre, contactoTel, relacion, foto, source, sourceId, sourceUpdatedAt, localizado:{por,contacto,relacion,nota} }`.
-
-**`sightings`** — avistamientos/pistas sobre una persona. Columnas: `id PK, person_id → persons.id, data, created_at`. `data`: `{ lugar, detalle, contacto, date }`.
-
 **`donations`** — donaciones a un centro o al fondo general (privadas). Columnas: `id PK, center_id → centers.id, center_name, estado (=estado de la donación), data, created_at`. `data`: el reporte (monto, método, donante/anónimo, comprobante, banco, etc.).
-
-**`volunteers`** — voluntarios. Columnas: `id PK, whatsapp, cedula, nombre, data, created_at`. `data`: `{ nombre, apellido, cedula, whatsapp, estado, municipio, parroquia, disp, veh, mov, skills:[], foto }`.
-
-**`applications`** — postulaciones de voluntarios a tareas. Columnas (sin `data`): `id PK, volunteer_id → volunteers.id, center_id → centers.id, center_name, task, status`.
 
 **`users`** — cuentas. Columnas: `id PK, phone (ÚNICO), nombre, apellido, estado, municipio, parroquia, pin_hash, data, created_at`. `pin_hash` = `scrypt$sal$hash`. `data`: perfil (incl. `aporte`).
 
@@ -207,10 +177,6 @@ Columnas: `id PK, status, nombre, estado, municipio, data, created_at` (+ migrad
 **`movements`** — movimientos logísticos de un centro. Columnas: `id PK, center_id → centers.id, type, data, created_at`. (Índice `idx_mov_center`.)
 
 **`directory`** — directorio de emergencia. Columnas: `id TEXT PK, category, name, zona, estado, data, created_at`. `data`: `{ name, category, phones, zona, estado, notes }`.
-
-**`help_requests`** — solicitudes de ayuda. Columnas: `id PK, tipo, nombre, contacto, estado, municipio, urgencia, status, data, created_at`.
-
-**`pets`** — reportes de mascotas. Columnas: `id PK, status, tipo, zona, estado, data, created_at`. `data`: `{ status, tipo, nombre, descripcion, foto, estado, municipio, parroquia, lugar, destino, contacto, whatsapp }`.
 
 **`resources`** — recursos compartidos (sin `data`): `id PK, type, title, url, descr, estado, created_at`.
 
@@ -223,40 +189,36 @@ Columnas: `id PK, status, nombre, estado, municipio, data, created_at` (+ migrad
 ```
 centers 1───* donations          (donations.center_id)
 centers 1───* movements          (movements.center_id)
-centers 1───* applications        (applications.center_id)
-volunteers 1─* applications        (applications.volunteer_id)
-persons 1───* sightings           (sightings.person_id)
-persons 0───1 persons             (persons.dup_of → persona "canónica")
 users   1───* sessions            (sessions.user_id)
 ```
 No hay claves foráneas declaradas (SQL portable, sin `FK`): la integridad se mantiene en la aplicación.
 
 ### 5.5 Índices
 
-`CREATE INDEX idx_mov_center ON movements (center_id, created_at)` — listar movimientos de un centro. `users.phone` y `sessions.token` son únicos/PK. Las lecturas grandes (personas) se paginan en SQL.
+`CREATE INDEX idx_mov_center ON movements (center_id, created_at)` — listar movimientos de un centro. `users.phone` y `sessions.token` son únicos/PK. Las lecturas grandes (centros) se paginan en SQL.
 
 ### 5.6 Migraciones y evolución
 
 No hay archivos de migración ni herramienta de migraciones. El esquema evoluciona así:
 - **Tablas nuevas:** se agregan a `init()` con `CREATE TABLE IF NOT EXISTS` (corre en cada arranque, idempotente).
-- **Columnas nuevas en tablas existentes:** funciones `ensure…Columns(store)` que hacen `ALTER TABLE … ADD COLUMN` dentro de `try/catch` (si ya existe, no pasa nada). Ejemplos: `import-dtv.js` agrega `persons.source_id`; `audit-dtv.js` agrega `persons.dup_of`.
+- **Columnas nuevas en tablas existentes:** funciones `ensure…Columns(store)` que hacen `ALTER TABLE … ADD COLUMN` dentro de `try/catch` (si ya existe, no pasa nada).
 - **Datos de fuentes externas:** *upsert* idempotente por id estable + reconciliación (ver `INTEGRACIONES.md`).
 
 ### 5.7 Consultar y mapear
 
-Las filas se convierten a objetos con *mappers* `o…()` que parsean `data` y le pegan las columnas (`oCenter`, `oPerson`, `oDon`, `oUser`, …). Ejemplo:
+Las filas se convierten a objetos con *mappers* `o…()` que parsean `data` y le pegan las columnas (`oCenter`, `oDon`, `oUser`, …). Ejemplo:
 ```js
 const oCenter = r => { const o = JSON.parse(r.data); o.id = r.id; return o; };
 const centros = (await store.all('SELECT * FROM centers WHERE estado=?', ['Lara'])).map(oCenter);
 ```
 
-> **Privacidad en la BD:** la cédula (voluntarios) y datos de dueño de centro existen en la BD pero **no** se devuelven en lecturas públicas; en hospitales (memoria) la cédula es **buscable sin devolverse**. Ver capítulo 7.
+> **Privacidad en la BD:** los datos de dueño de centro existen en la BD pero **no** se devuelven en lecturas públicas. Ver capítulo 7.
 
-> Las fuentes externas en **memoria** (hospitales OCR, reportes de servicios, edificios, sismos) **no** usan tabla: mantienen la BD liviana y evitan escribir datos de solo lectura que cambian seguido.
+> Las fuentes externas en **memoria** (catálogo de insumos, reportes de servicios, edificios, sismos) **no** usan tabla: mantienen la BD liviana y evitan escribir datos de solo lectura que cambian seguido.
 
 ## 6. API / Endpoints
 
-API REST servida bajo `/api/`. Las lecturas públicas (centros, personas, hospitales, edificios, reportes, métricas…) son cacheables por el CDN. Las acciones requieren sesión (token Bearer); los endpoints `/api/admin/*` requieren rol admin.
+API REST servida bajo `/api/`. Las lecturas públicas (centros, edificios, reportes, insumos, métricas…) son cacheables por el CDN. Las acciones requieren sesión (token Bearer); los endpoints `/api/admin/*` requieren rol admin.
 
 ### 6.1 Centros y logística
 | Método | Ruta | Descripción |
@@ -270,57 +232,38 @@ API REST servida bajo `/api/`. Las lecturas públicas (centros, personas, hospit
 | GET/POST | `/api/centers/:id/movements` | Movimientos logísticos del centro. |
 | POST | `/api/movements/:id/estado` | Cambiar estado de un movimiento. |
 
-### 6.2 Donaciones, voluntarios, postulaciones
+### 6.2 Donaciones
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/donations` | Listar donaciones (privado: dueño/admin). |
 | POST | `/api/donations` | Registrar donación (anónima permitida). |
 | PATCH | `/api/donations/:id` | Actualizar estado de donación. |
-| POST | `/api/volunteers` | Registrar voluntario. |
-| GET | `/api/volunteers/lookup` | Buscar perfil de voluntario. |
-| PATCH | `/api/volunteers/:id` | Actualizar voluntario. |
-| GET/POST | `/api/applications` | Listar / crear postulaciones. |
 
-### 6.3 Personas, avistamientos, mascotas, ayuda
+### 6.3 Fuentes agregadas (solo lectura, cacheables)
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/api/persons` | Listar personas (público, cacheable, paginado). |
-| GET | `/api/persons/:id` | Detalle de una persona. |
-| GET | `/api/persons/stats` | Conteos por estado. |
-| POST | `/api/persons` | Crear reporte de persona. |
-| PATCH | `/api/persons/:id` | Actualizar reporte. |
-| POST | `/api/persons/:id/sightings` | Registrar avistamiento. |
-| GET/POST/PATCH | `/api/pets` · `/api/pets/:id` | Reportes de mascotas. |
-| GET/POST/PATCH | `/api/help-requests` · `/api/help-requests/:id` | Solicitudes de ayuda. |
-
-### 6.4 Fuentes agregadas (solo lectura, cacheables)
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET | `/api/hospitals` · `/api/hospitals/summary` | Personas en hospitales (búsqueda + resumen). |
 | GET | `/api/edificios` | Edificios afectados. |
 | GET | `/api/reportes` | Cortes de servicios. |
+| GET | `/api/supplies` | Catálogo de insumos. |
 | GET | `/api/sismos` | Réplicas sísmicas. |
 | GET | `/api/directorio` | Directorio de emergencia. |
 | GET | `/api/resources` | Recursos compartidos. |
-| GET | `/api/audit` | Resumen de auditoría de duplicados. |
 
-### 6.5 Cuentas, admin y utilidades
+### 6.4 Cuentas, admin y utilidades
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/users/check` | ¿Teléfono ya registrado? |
 | POST | `/api/users` · `/api/users/login` | Registrar / iniciar sesión (token). |
 | PATCH | `/api/users/:id` | Actualizar perfil. |
 | GET | `/api/admin/overview` · `/api/admin/dashboard` · `/api/admin/logistics` | Paneles de admin. |
-| POST | `/api/admin/centers/:id` · `/api/admin/centers/:id/assign` | Verificar/moderar/asignar centro. |
-| POST | `/api/admin/persons/:id` | Moderar reporte. |
+| POST | `/api/admin/centers/:id` · `/api/admin/centers/:id/assign` | Verificar/asignar centro. |
 | POST | `/api/resources` · `/api/admin/resources/:id/delete` | Crear/borrar recurso (admin). |
 | GET | `/api/config` | Configuración pública (p. ej. key de mapa). |
+| GET | `/api/metrics` | Métricas públicas (visitas, centros, edificios). |
 | POST | `/api/upload` | Subir imagen. |
 | GET | `/healthz` | Chequeo de salud (`{"ok":true}`). |
 
-> Los endpoints de importación masiva (`/api/admin/import-*`, `/api/admin/ingest`) están **protegidos por token** y normalmente **desactivados**.
-
-### 6.6 Convenciones de la API
+### 6.5 Convenciones de la API
 
 - **Formato:** JSON en petición y respuesta. Las rutas se registran en un objeto `{ 'GET /api/centers': fn, … }` con un *dispatcher* simple (sin framework). Los parámetros de ruta (`:id`) y de query llegan a la función.
 - **Autenticación:** header `Authorization: Bearer <token>`. El token se obtiene de `POST /api/users/login` y el cliente lo guarda en `localStorage` (`ayudave_session`). `authUser(req)` resuelve el usuario; los `/api/admin/*` exigen `user.admin`.
@@ -344,7 +287,7 @@ API REST servida bajo `/api/`. Las lecturas públicas (centros, personas, hospit
 | **Borde / red** | Cloud Armor (WAF + rate-limit) y CDN delante del servicio. |
 | **Visitas anónimas** | Contador con hash diario de IP+UA + sal; **no se guarda la IP**. |
 
-**Privacidad de datos personales (postura del proyecto):** de registros de personas se publica el **mínimo útil para encontrar a alguien** (nombre, hospital/zona, edad, estado). **No** se publican cédula, dirección/domicilio, diagnósticos médicos ni N° de historia. Cuando un dato sensible sirve para buscar (p. ej. la cédula), se hace **buscable del lado del servidor sin devolverlo**.
+**Datos personales (postura del proyecto):** por protección de las personas, la plataforma **no maneja datos personales**. Solo agrega información no personal de la emergencia (centros de acopio, edificios, servicios, directorio, insumos, sismos). Las únicas cuentas son las de quienes gestionan un centro o administran la plataforma, cuyo teléfono y datos de dueño **no** se exponen en lecturas públicas.
 
 ## 8. Despliegue e infraestructura
 
@@ -402,8 +345,7 @@ AyudaVE es **lectura-intensiva** (mucha gente buscando, poca reportando), lo que
 | **Una fuente externa no actualiza** | Probar su CLI: `node import-<fuente>.js`. Si la fuente cambió de formato, ajustar el `norm()` del módulo. La caché conserva la última copia buena, así que no se rompe la app. |
 | **Designar un admin** | Añadir el teléfono a la variable `AYUDAVE_ADMINS` (no en código) y redesplegar. |
 | **Pico de tráfico** | Cloud Run autoescala solo; si se queda corto, subir `--max-instances`. El CDN absorbe lo demás. |
-| **Revisar duplicados de personas** | Endpoint `/api/audit` y pantalla de auditoría (admin). |
-| **Métricas / difusión** | Dashboard de admin (visitas por hora/día, registros, actividad). |
+| **Métricas / difusión** | Dashboard de admin (visitas, actividad). |
 | **Quedarse sin créditos** | Alertas de presupuesto (50/90/100%). |
 
 ## 11. Estructura del repositorio
@@ -413,9 +355,7 @@ server.js                 Backend completo (http + rutas + auth + carga de fuent
 store.js / store-sqlite.js / store-pg.js   Persistencia intercambiable
 storage.js                Imágenes: disco o Cloud Storage
 Dockerfile                Imagen para Cloud Run
-import-*.js               Una fuente de datos externa por archivo (8 fuentes)
-audit-dtv.js              Auditoría de duplicados de personas
-refresh-dtv.js            Refresco incremental de personas (job/cron/CLI)
+import-*.js               Una fuente de datos externa por archivo (varias fuentes)
 
 public/                   Frontend (sin build)
   index.html app.js api.js data.js geo-ve.js styles.css vendor/leaflet/
@@ -434,7 +374,7 @@ docs/                     Documentación (este set) + diagrama + generador de PD
 
 ## 13. Capturas de pantalla
 
-Pantallas principales de las funciones nuevas (con **datos de ejemplo**, sin información personal real). Las capturas se regeneran con `node docs/shoot-nuevas.js`.
+Pantallas principales de las funciones (con **datos de ejemplo**). Las capturas se regeneran con `node docs/shoot-nuevas.js`.
 
 SHOTS_GALLERY_PLACEHOLDER
 
@@ -446,15 +386,13 @@ Valores válidos que usa la app (definidos en `public/data.js` y en los importad
 |---|---|
 | **Centro · `status`** | `verificado`, `verificado-basico`, `verificado-operativo`, `pendiente`, `sospechoso`, `cerrado` |
 | **Centro · `type`** | Iglesia, Universidad, Fundación, ONG, Alcaldía, Condominio, Comunidad, Consejo comunal, Comuna, Voluntariado, Empresa privada, Otro |
-| **Centro · `accepts[]`** | `fisico`, `pagomovil`, `transferencia`, `cripto`, `voluntarios`, `transporte` |
-| **Necesidad · `key`** | `agua`, `comida`, `medicinas`, `primeros-auxilios`, `gasas`, `ropa`, `mantas`, `panales`, `formula`, `linternas`, `baterias`, `powerbanks`, `herramientas`, `transporte`, `gasolina`, `voluntarios`, `pagomovil`, `cripto` |
+| **Centro · `accepts[]`** | `fisico`, `pagomovil`, `transferencia`, `cripto`, `transporte` |
+| **Necesidad · `key`** | `agua`, `comida`, `medicinas`, `primeros-auxilios`, `gasas`, `ropa`, `mantas`, `panales`, `formula`, `linternas`, `baterias`, `powerbanks`, `herramientas`, `transporte`, `gasolina`, `pagomovil`, `cripto` |
 | **Necesidad · `level`** | `critica`, `alta`, `media`, `baja` |
-| **Persona · `status`** | `desaparecido`, `encontrado`, `fallecido` |
 | **Donación · estado** | Reportada, Pendiente de confirmar, Confirmada por el centro, Usada para compra, Entregada, Evidenciada |
 | **Edificio · `damage`** | `parcial`, `severo`, `total` |
 | **Recurso · `type`** | `whatsapp`, `telegram`, `database`, `image`, `video`, `link` |
-| **Mascota · `status`** | `perdida`, `encontrada`, `refugio`, `veterinario` |
-| **Aporte del usuario** | `insumos`, `dinero`, `voluntario`, `transporte`, `difundir`, `centro` |
+| **Aporte del usuario** | `insumos`, `dinero`, `transporte`, `difundir`, `centro` |
 | **Geografía** | Estados/municipios/parroquias de `geo-ve.js`; teléfonos normalizados a `+58…` |
 
 > Íconos: catálogo `ICONS` en `data.js` (línea, 24×24, `currentColor`); úsalos con `icon('nombre')`.

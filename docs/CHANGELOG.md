@@ -5,6 +5,11 @@ Al editar la documentación: subir la versión en `docs/build-pdfs.js` (`VER`), 
 
 ---
 
+## 30 de junio de 2026
+
+- **Retiro de datos personales.** Se retiró de la plataforma todo manejo de datos personales (personas desaparecidas/hospitalizadas, voluntarios, solicitudes de ayuda, mascotas y el asistente de búsqueda por foto) por protección de las personas. La plataforma se enfoca ahora en centros de acopio e información no personal (edificios afectados, cortes de servicios, directorio de emergencia, catálogo de insumos y sismos).
+- **Documentación** actualizada en consecuencia (README, guía técnica, integraciones, desarrollo, manual de usuario).
+
 ## 2.0.1 — Junio 2026
 
 **Documentación para desarrolladores: completada.**

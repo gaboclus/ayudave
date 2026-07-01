@@ -104,35 +104,11 @@ window.NEEDS = [
 ];
 window.NEED_MAP = Object.fromEntries(window.NEEDS.map(n => [n.key, n]));
 
-/* ---------- Habilidades de voluntario ---------- */
-window.VOL_SKILLS = [
-  { key: 'carro', label: 'Tengo carro', icon: 'car' },
-  { key: 'moto', label: 'Tengo moto', icon: 'truck' },
-  { key: 'cargar', label: 'Puedo cargar cajas', icon: 'box' },
-  { key: 'clasificar', label: 'Clasificar insumos', icon: 'clipboard' },
-  { key: 'entregar', label: 'Entregar donaciones', icon: 'truck' },
-  { key: 'llamadas', label: 'Hacer llamadas', icon: 'phone' },
-  { key: 'verificar', label: 'Verificar centros', icon: 'check' },
-  { key: 'fotos', label: 'Tomar fotos', icon: 'camera' },
-  { key: 'evidencias', label: 'Subir evidencias', icon: 'upload' },
-  { key: 'medico', label: 'Soy médico', icon: 'medkit' },
-  { key: 'enfermero', label: 'Soy enfermero', icon: 'medkit' },
-  { key: 'paramedico', label: 'Soy paramédico', icon: 'medkit' },
-  { key: 'psicologo', label: 'Soy psicólogo', icon: 'users' },
-  { key: 'cocinar', label: 'Puedo cocinar', icon: 'food' },
-  { key: 'ninos', label: 'Cuidar niños', icon: 'users' },
-  { key: 'tecnologia', label: 'Ayudar con tecnología', icon: 'tools' },
-  { key: 'redes', label: 'Redes sociales', icon: 'megaphone' },
-  { key: 'gasolina', label: 'Donar gasolina', icon: 'fuel' },
-];
-window.SKILL_MAP = Object.fromEntries(window.VOL_SKILLS.map(s => [s.key, s]));
-
 /* ---------- Cómo quiero ayudar ---------- */
 window.HELP_WAYS = [
   { key: 'insumos', label: 'Donar insumos', icon: 'box' },
   { key: 'pagomovil', label: 'Donar por Pago Móvil', icon: 'money' },
   { key: 'cripto', label: 'Donar cripto', icon: 'coin' },
-  { key: 'voluntario', label: 'Ser voluntario', icon: 'users' },
   { key: 'transporte', label: 'Ofrecer transporte', icon: 'truck' },
   { key: 'difundir', label: 'Difundir centros', icon: 'megaphone' },
   { key: 'nose', label: 'No sé, muéstrame qué se necesita cerca', icon: 'info' },
@@ -196,41 +172,6 @@ window.LEVEL_LABELS = {
 };
 window.DONATION_STATES = ['Reportada', 'Pendiente de confirmar', 'Confirmada por el centro', 'Usada para compra', 'Entregada', 'Evidenciada'];
 
-/* ---------- Personas (desaparecidos / encontrados) ---------- */
-window.PERSON_STATUS = {
-  desaparecido: { label: 'Desaparecido', cls: 'amber', icon: 'usersearch' },
-  encontrado:   { label: 'Encontrado', cls: 'ok', icon: 'check' },
-  menor_solo:   { label: 'Niño/a sin acompañante', cls: 'bad', icon: 'users' },
-};
-window.PERSON_TYPES = [
-  { key: 'desaparecido', label: 'Persona desaparecida', icon: 'usersearch', desc: 'Buscamos a alguien' },
-  { key: 'encontrado', label: 'Persona encontrada', icon: 'check', desc: 'Alguien fue hallado a salvo' },
-  { key: 'menor_solo', label: 'Niño/a sin acompañante', icon: 'users', desc: 'Un menor sin un adulto responsable' },
-];
-window.PERSON_FILTERS = [
-  { key: '', label: 'Todos' },
-  { key: 'desaparecido', label: 'Desaparecidos' },
-  { key: 'encontrado', label: 'Encontrados' },
-  { key: 'menor_solo', label: 'Niños solos' },
-];
-window.SEXOS = ['Femenino', 'Masculino', 'Otro / No especifica'];
-
-/* Mascotas (perdidas / encontradas / refugio / veterinario) */
-window.PET_STATUS = {
-  perdida:     { label: 'Perdida', cls: 'bad', icon: 'usersearch', color: '#dc2626' },
-  encontrada:  { label: 'Encontrada', cls: 'ok', icon: 'check', color: '#16a34a' },
-  refugio:     { label: 'En refugio', cls: 'amber', icon: 'home', color: '#d97706' },
-  veterinario: { label: 'Veterinario', cls: 'slate', icon: 'plus', color: '#0891b2' },
-};
-window.PET_FILTERS = [
-  { key: '', label: 'Todas' },
-  { key: 'perdida', label: 'Perdidas' },
-  { key: 'encontrada', label: 'Encontradas' },
-  { key: 'refugio', label: 'Refugio' },
-  { key: 'veterinario', label: 'Veterinario' },
-];
-window.PET_TYPES = ['Perro', 'Gato', 'Ave', 'Otro'];
-
 /* Logística: categorías de insumos (para peso/toneladas) y medicinas */
 window.ITEM_CATS = [
   { k: 'seco', label: 'Comida seca' },
@@ -248,7 +189,6 @@ window.MED_PRESENT = ['Blíster', 'Caja', 'Frasco', 'Ampolla', 'Tubo', 'Sobre', 
 window.APORTES = [
   { key: 'insumos', label: 'Donar insumos', icon: 'box' },
   { key: 'dinero', label: 'Donar dinero', icon: 'money' },
-  { key: 'voluntario', label: 'Ser voluntario', icon: 'users' },
   { key: 'transporte', label: 'Ofrecer transporte', icon: 'truck' },
   { key: 'difundir', label: 'Difundir / redes sociales', icon: 'megaphone' },
   { key: 'centro', label: 'Tengo un centro de acopio', icon: 'building' },

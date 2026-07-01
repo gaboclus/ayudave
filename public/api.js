@@ -30,47 +30,13 @@ window.API = {
   createDonation(d) { return this._send('POST', '/donations', d); },
   patchDonation(id, d) { return this._send('PATCH', '/donations/' + id, d); },
 
-  // voluntarios
-  createVolunteer(d) { return this._send('POST', '/volunteers', d); },
-  lookupVolunteer(q) { return this._get('/volunteers/lookup?q=' + encodeURIComponent(q)); },
-  patchVolunteer(id, d) { return this._send('PATCH', '/volunteers/' + id, d); },
-
-  // postulaciones
-  createApplication(d) { return this._send('POST', '/applications', d); },
-  applications(params) { return this._get('/applications' + (params ? '?' + params : '')); },
-
-  // personas (desaparecidos / encontrados)
-  persons(qs) { return this._get('/persons' + (qs ? '?' + qs : '')); },
-  personStats() { return this._get('/persons/stats'); },
-  person(id) { return this._get('/persons/' + id); },
-  personContacto(id) { return this._get('/persons/' + id + '/contacto'); }, // datos de contacto bajo petición (rate-limited)
-  createPerson(d) { return this._send('POST', '/persons', d); },
-  patchPerson(id, d) { return this._send('PATCH', '/persons/' + id, d); },
-  addSighting(id, d) { return this._send('POST', `/persons/${id}/sightings`, d); },
-
   config() { return this._get('/config'); },
   metrics() { return this._get('/metrics'); },
-  audit() { return this._get('/audit'); },
-  hospitals(qs) { return this._get('/hospitals' + (qs ? '?' + qs : '')); },
-  hospitalsSummary() { return this._get('/hospitals/summary'); },
-
-  // solicitudes de ayuda (una persona pide ayuda)
-  createHelpRequest(d) { return this._send('POST', '/help-requests', d); },
-  helpRequests(qs) { return this._get('/help-requests' + (qs ? '?' + qs : '')); },
-  patchHelpRequest(id, d) { return this._send('PATCH', '/help-requests/' + id, d); },
   reportes() { return this._get('/reportes'); }, // reportes de servicios (reporte-ve), auto-sincronizados
   edificios() { return this._get('/edificios'); }, // edificios afectados (terremotovenezuela.com), auto-sincronizados
   supplies() { return this._get('/supplies'); }, // catálogo maestro de insumos (ReliefHub/ResponseGrid)
   directorio() { return this._get('/directorio'); }, // directorio de emergencia (hospitales/ambulancias/bomberos)
   sismos() { return this._get('/sismos'); }, // sismos/réplicas recientes (USGS)
-
-  // mascotas (perdidas / encontradas / refugio / veterinario)
-  pets(qs) { return this._get('/pets' + (qs ? '?' + qs : '')); },
-  createPet(d) { return this._send('POST', '/pets', d); },
-  patchPet(id, d) { return this._send('PATCH', '/pets/' + id, d); },
-
-  // asistente IA: buscar persona por nombre o foto
-  assistant(d) { return this._send('POST', '/assistant', d); },
 
   // recursos (enlaces a grupos, bases de datos, galería)
   resources() { return this._get('/resources'); },
