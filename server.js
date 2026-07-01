@@ -10,17 +10,13 @@ const path = require('path');
 const crypto = require('crypto');
 const store = require('./store');       // SQLite o Postgres según DATABASE_URL
 const storage = require('./storage');   // disco o GCS según GCS_BUCKET
-const { importDtvPersons, insertPersonsBatch, upsertPersons, mapDtvPerson, ensurePersonsSourceId, DTV_API } = require('./import-dtv'); // importación de desaparecidos del sismo
-const { getAuditSummary, auditPersons, ensureAuditColumns } = require('./audit-dtv'); // auditoría/depuración de duplicados
 const { importAcopio } = require('./import-acopio'); // centros de acopio desde acopiovenezuela.vercel.app (auto-actualizable)
 const { importCentrosApis } = require('./import-centros-apis'); // centros desde APIs públicas AcopioVE + ResponseGrid (dedup)
-const { searchOcrHospitals, ocrHospitalsSummary, primeOcrHospitals } = require('./import-ocr-hospitals'); // pacientes en hospitales (OCR, repo abierto)
 const { getReportes, primeReportes, SOURCE: REP_SOURCE, CATS: REP_CATS } = require('./import-reportes'); // reportes de servicios (luz/agua/medicinas...) desde reporte-ve
 const { getEdificios, primeEdificios, edificiosCount, SOURCE: EDIF_SOURCE } = require('./import-edificios'); // edificios afectados desde terremotovenezuela.com
 const { getSupplies, primeSupplies, suppliesCount, SOURCE: SUP_SOURCE, ATTRIBUTION: SUP_ATTR } = require('./import-supplies'); // catálogo maestro de insumos (ReliefHub/ResponseGrid)
 const { importDirectorio, getDirectorio } = require('./import-directorio'); // directorio de emergencia (hospitales/ambulancias/bomberos) desde redayudavenezuela.com
 const { getSismos, primeSismos } = require('./import-sismos'); // sismos/réplicas recientes (USGS)
-const assistant = require('./assistant-gemini'); // asistente IA: buscar persona por foto (Gemini)
 // Carga opcional de módulos de extensión privados (no incluidos en el repo open source).
 function optionalModule(name) { try { return require(name); } catch { return null; } }
 const ext = optionalModule('./extension'); // módulo de extensión opcional (rutas/tablas propias); ausente en la versión open source
@@ -162,19 +158,6 @@ const oResource = r => ({ id: r.id, type: r.type, title: r.title, url: r.url, de
 const oHelp = r => { const o = JSON.parse(r.data); o.id = r.id; o.tipo = r.tipo; o.urgencia = r.urgencia; o.status = r.status; o.estado = r.estado; o.municipio = r.municipio; return o; };
 const oPet = r => { const o = JSON.parse(r.data); o.id = r.id; o.status = r.status; o.tipo = r.tipo; o.zona = r.zona; o.estado = r.estado; o.createdAt = num(r.created_at); return o; };
 // Descarga una imagen (solo http/https) a base64 con tope de tamaño, para el asistente IA.
-async function fetchImageB64(url) {
-  if (!/^https?:\/\//i.test(url || '')) return null;
-  try {
-    const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 6000);
-    const res = await fetch(url, { signal: ctrl.signal }); clearTimeout(to);
-    if (!res.ok) return null;
-    const mime = res.headers.get('content-type') || 'image/jpeg';
-    if (!/^image\//.test(mime)) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length > 4 * 1024 * 1024) return null; // 4MB máx
-    return { mime, data: buf.toString('base64') };
-  } catch { return null; }
-}
 // Solo permite http/https (acepta wa.me, t.me, etc. sin protocolo). Evita javascript:/data: (XSS).
 function safeUrl(u) {
   u = ('' + (u || '')).trim();
@@ -187,16 +170,9 @@ function safeUrl(u) {
 
 /* ---------------- Semillas (solo con AYUDAVE_SEED=on) ---------------- */
 const SEED_CENTERS = require('./seed-centers.js');
-const SEED_PERSONS = [
-  { status: 'desaparecido', nombre: 'José Antonio', apellido: 'Pérez', edad: 34, sexo: 'Masculino', estado: 'La Guaira', municipio: 'Vargas', parroquia: 'Maiquetía', lugar: 'Cerca del río en Maiquetía', fecha: '23/06/2026', descripcion: 'Estatura media, contextura delgada. Vestía franela azul y jean.', contactoNombre: 'María Pérez (hermana)', contactoTel: '0414-1112233', relacion: 'Hermana', foto: null },
-  { status: 'desaparecido', nombre: 'Carmen', apellido: 'Rodríguez', edad: 19, sexo: 'Femenino', estado: 'Miranda', municipio: 'Sucre', parroquia: 'Petare', lugar: 'Última vez vista saliendo de su casa', fecha: '24/06/2026', descripcion: 'Cabello castaño largo. Llevaba suéter gris.', contactoNombre: 'Luis Rodríguez (padre)', contactoTel: '0424-9998877', relacion: 'Padre', foto: null },
-];
 async function seed() {
   if (num((await store.get('SELECT COUNT(*) c FROM centers')).c) === 0) {
     for (const c of SEED_CENTERS) { c.demo = true; await store.insert('centers', { id: c.id, name: c.name, status: c.status, estado: c.estado, municipio: c.municipio, parroquia: c.parroquia, distance: c.distance, data: JSON.stringify(c), created_at: now() }); }
-  }
-  if (num((await store.get('SELECT COUNT(*) c FROM persons')).c) === 0) {
-    for (const p of SEED_PERSONS) { p.demo = true; await store.insert('persons', { status: p.status, nombre: `${p.nombre} ${p.apellido}`, estado: p.estado, municipio: p.municipio, data: JSON.stringify(p), created_at: now() }); }
   }
 }
 
@@ -312,88 +288,6 @@ const api = {
       if (c) { const o = oCenter(c); o.stats = o.stats || {}; o.stats.confirmadas = (o.stats.confirmadas || 0) + 1; await store.run('UPDATE centers SET data=? WHERE id=?', [JSON.stringify(o), r.center_id]); }
     }
     return oDon(await store.get('SELECT * FROM donations WHERE id=?', [p.id]));
-  },
-
-  // ---- voluntarios ----
-  'POST /api/volunteers': async (p, q, body) => {
-    const id = await store.insert('volunteers', { whatsapp: body.whatsapp || '', cedula: body.cedula || '', nombre: `${body.nombre || ''} ${body.apellido || ''}`.trim(), data: JSON.stringify(body), created_at: now() });
-    return oVol(await store.get('SELECT * FROM volunteers WHERE id=?', [id]));
-  },
-  'GET /api/volunteers/lookup': async (p, q) => {
-    const term = (q.q || '').trim(); if (!term) return { volunteer: null };
-    const r = await store.get('SELECT * FROM volunteers WHERE whatsapp=? OR cedula=? OR whatsapp LIKE ? OR cedula LIKE ? ORDER BY id DESC LIMIT 1', [term, term, '%' + term + '%', '%' + term + '%']);
-    return { volunteer: r ? oVol(r) : null };
-  },
-  'PATCH /api/volunteers/:id': async (p, q, body) => {
-    const r = await store.get('SELECT * FROM volunteers WHERE id=?', [p.id]); if (!r) return err(404);
-    const v = Object.assign(oVol(r), body);
-    await store.run('UPDATE volunteers SET data=? WHERE id=?', [JSON.stringify(v), p.id]);
-    return v;
-  },
-
-  // ---- postulaciones ----
-  'POST /api/applications': async (p, q, body) => {
-    const id = await store.insert('applications', { volunteer_id: body.volunteer_id || null, center_id: body.center_id || null, center_name: body.center_name || '', task: body.task || '', status: 'pending', created_at: now() });
-    return oApp(await store.get('SELECT * FROM applications WHERE id=?', [id]));
-  },
-  'GET /api/applications': async (p, q) => {
-    let rows;
-    if (q.volunteer) rows = await store.all('SELECT * FROM applications WHERE volunteer_id=? ORDER BY id DESC', [q.volunteer]);
-    else if (q.center) rows = await store.all('SELECT * FROM applications WHERE center_id=? ORDER BY id DESC', [q.center]);
-    else rows = await store.all('SELECT * FROM applications ORDER BY id DESC');
-    return rows.map(oApp);
-  },
-
-  // ---- personas (desaparecidos / encontrados) ----
-  'GET /api/persons': async (p, q) => {
-    // Filtrado y paginación en SQL: la tabla puede tener decenas de miles de filas.
-    // Por defecto ocultamos duplicados (dup_of != NULL); ?dups=1 los incluye.
-    const where = ['lower(data) NOT LIKE ?']; const params = ['%"hidden":true%'];
-    if (!q.dups) where.push('dup_of IS NULL');
-    if (q.status) { where.push('status = ?'); params.push(q.status); }
-    if (q.q) { where.push('lower(data) LIKE ?'); params.push('%' + String(q.q).toLowerCase() + '%'); }
-    const limit = Math.min(Math.max(parseInt(q.limit, 10) || 60, 1), 200);
-    const offset = Math.max(parseInt(q.offset, 10) || 0, 0);
-    const sql = `SELECT * FROM persons WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ? OFFSET ?`;
-    return (await store.all(sql, [...params, limit, offset])).map(oPersonPublic); // allowlist: sin PII de contacto
-  },
-  'GET /api/persons/stats': async () => {
-    // Conteos ya depurados (sin duplicados): dup_of IS NULL.
-    const rows = await store.all("SELECT status, COUNT(*) c FROM persons WHERE dup_of IS NULL AND lower(data) NOT LIKE ? GROUP BY status", ['%"hidden":true%']);
-    const by = {}; let total = 0;
-    for (const r of rows) { by[r.status] = num(r.c); total += num(r.c); }
-    return { total, desaparecidos: by.desaparecido || 0, encontrados: by.encontrado || 0 };
-  },
-  'GET /api/persons/:id': async (p) => {
-    const r = await store.get('SELECT * FROM persons WHERE id=?', [p.id]); if (!r) return err(404);
-    const person = oPerson(r);
-    // El contacto de la familia NO se incluye aquí (endpoint enumerable): se revela aparte con rate-limit.
-    person.tieneContacto = !!(person.contactoTel || person.contactoNombre);
-    for (const k of PERSON_CONTACT_FIELDS) delete person[k];
-    person.sightings = (await store.all('SELECT * FROM sightings WHERE person_id=? ORDER BY id DESC', [p.id])).map(oSight);
-    return person;
-  },
-  // Revela el contacto de la familia bajo petición explícita y con límite estricto (anti-scraping).
-  'GET /api/persons/:id/contacto': async (p, q, body, req) => {
-    if (revealLimited(clientIp(req))) return err(429, 'Demasiadas solicitudes de contacto. Intenta en unos minutos.');
-    const r = await store.get('SELECT * FROM persons WHERE id=?', [p.id]); if (!r) return err(404);
-    const o = oPerson(r);
-    return { contactoTel: o.contactoTel || '', contactoNombre: o.contactoNombre || '', relacion: o.relacion || '' };
-  },
-  'POST /api/persons': async (p, q, body) => {
-    const id = await store.insert('persons', { status: body.status || 'desaparecido', nombre: `${body.nombre || ''} ${body.apellido || ''}`.trim(), estado: body.estado || '', municipio: body.municipio || '', data: JSON.stringify(body), created_at: now() });
-    return oPerson(await store.get('SELECT * FROM persons WHERE id=?', [id]));
-  },
-  'PATCH /api/persons/:id': async (p, q, body) => {
-    const r = await store.get('SELECT * FROM persons WHERE id=?', [p.id]); if (!r) return err(404);
-    const o = Object.assign(oPerson(r), body);
-    await store.run('UPDATE persons SET status=?,data=? WHERE id=?', [o.status, JSON.stringify(o), p.id]);
-    return o;
-  },
-  'POST /api/persons/:id/sightings': async (p, q, body) => {
-    const r = await store.get('SELECT * FROM persons WHERE id=?', [p.id]); if (!r) return err(404);
-    const id = await store.insert('sightings', { person_id: p.id, data: JSON.stringify({ ...body, date: 'Ahora' }), created_at: now() });
-    return oSight(await store.get('SELECT * FROM sightings WHERE id=?', [id]));
   },
 
   // ---- cuentas / sesión (teléfono + PIN de 4 dígitos) ----
@@ -654,134 +548,17 @@ const api = {
     await store.run('UPDATE centers SET data=? WHERE id=?', [JSON.stringify(c), p.id]);
     return publicCenter(c);
   },
-  // Importación masiva desde desaparecidosterremotovenezuela.com (gated por token de un solo uso).
-  // Desactivado si no existe AYUDAVE_IMPORT_TOKEN. Header requerido: X-Import-Token.
-  'POST /api/admin/import-persons': async (p, q, body, req) => {
-    const token = process.env.AYUDAVE_IMPORT_TOKEN;
-    if (!token) return err(404, 'no disponible');
-    if ((req.headers['x-import-token'] || '') !== token) return err(403, 'token inválido');
-    const max = q.max ? Number(q.max) : Infinity;
-    const pageSize = q.pageSize ? Math.min(Number(q.pageSize) || 100, 100) : 100;
-    console.log('[import] iniciando desde', DTV_API, 'max=' + max);
-    const result = await importDtvPersons(store, { max, pageSize, log: m => console.log('[import]', m) });
-    console.log('[import] terminado', JSON.stringify(result));
-    return result;
-  },
-  // Importación por lotes: recibe filas ya mapeadas desde un cliente de confianza
-  // (p.ej. la laptop, que SÍ alcanza la fuente cuando el datacenter está bloqueado).
-  // body: { reset?: bool, rows: [{status,nombre,estado,municipio,data,created_at}, ...] }
-  'POST /api/admin/import-batch': async (p, q, body, req) => {
-    const token = process.env.AYUDAVE_IMPORT_TOKEN;
-    if (!token) return err(404, 'no disponible');
-    if ((req.headers['x-import-token'] || '') !== token) return err(403, 'token inválido');
-    let deleted = 0;
-    if (body.reset) { const r = await store.run('DELETE FROM persons WHERE data LIKE ?', ['%"source":"desaparecidosterremotovenezuela.com"%']); deleted = r.changes || 0; }
-    const rows = Array.isArray(body.rows) ? body.rows : [];
-    const clean = rows.filter(r => r && typeof r.data === 'string').map(r => ({
-      status: r.status || 'desaparecido', nombre: r.nombre || 'Sin nombre',
-      estado: r.estado || '', municipio: r.municipio || '', data: r.data, created_at: Number(r.created_at) || now(),
-    }));
-    for (let i = 0; i < clean.length; i += 500) await insertPersonsBatch(store, clean.slice(i, i + 500));
-    const total = num((await store.get('SELECT COUNT(*) c FROM persons')).c);
-    return { inserted: clean.length, deleted, total };
-  },
-  // Ingesta colaborativa: recibe registros CRUDOS de la fuente (tal cual la API de
-  // desaparecidosterremotovenezuela.com) desde el navegador de un usuario en Venezuela
-  // (bookmarklet), que sí pasa el geo-bloqueo. Mapea y upsert por source_id (idempotente).
-  // CORS abierto + token. ?audit=1 dispara la depuración al terminar.
-  'POST /api/admin/ingest': async (p, q, body, req) => {
-    const token = process.env.AYUDAVE_IMPORT_TOKEN;
-    if (!token) return err(404, 'no disponible');
-    if ((req.headers['x-import-token'] || q.token || '') !== token) return err(403, 'token inválido');
-    const items = Array.isArray(body.items) ? body.items : [];
-    const seen = new Set(); const rows = [];
-    for (const src of items) { if (src && src.id && !seen.has(src.id)) { seen.add(src.id); rows.push(mapDtvPerson(src)); } }
-    for (let i = 0; i < rows.length; i += 500) await upsertPersons(store, rows.slice(i, i + 500));
-    let audited = null;
-    if (q.audit) { try { audited = await auditPersons(store, { apply: true }); } catch (e) { console.error('[ingest] audit', e.message); } }
-    const total = num((await store.get('SELECT COUNT(*) c FROM persons')).c);
-    console.log(`[ingest] recibidos ${items.length} · upsert ${rows.length} · total ${total}${q.audit ? ' · auditado' : ''}`);
-    return { received: items.length, upserted: rows.length, total, audited };
-  },
-
   // ---- configuración pública ----
-  'GET /api/config': () => ({ googleMapsKey: process.env.AYUDAVE_GOOGLE_MAPS_KEY || loadConfig().googleMapsKey || '', gaId: process.env.AYUDAVE_GA_ID || loadConfig().gaId || '', aiPhoto: assistant.hasKey() }),
-
-  // ---- auditoría de duplicados de la fuente (resultados reales) ----
-  'GET /api/audit': async () => getAuditSummary(store),
+  'GET /api/config': () => ({ googleMapsKey: process.env.AYUDAVE_GOOGLE_MAPS_KEY || loadConfig().googleMapsKey || '', gaId: process.env.AYUDAVE_GA_ID || loadConfig().gaId || '' }),
 
   // ---- métricas públicas (visitas + agregados, sin datos sensibles) ----
   'GET /api/metrics': async () => {
     const c = async (t, w) => num((await store.get(`SELECT COUNT(*) c FROM ${t}${w ? ' WHERE ' + w : ''}`)).c);
-    const rows = await store.all("SELECT status, COUNT(*) c FROM persons WHERE dup_of IS NULL AND lower(data) NOT LIKE ? GROUP BY status", ['%"hidden":true%']);
-    const pby = {}; let ptotal = 0; for (const r of rows) { pby[r.status] = num(r.c); ptotal += num(r.c); }
     return {
       visits: await getMetrics(),
       centers: { total: await c('centers'), verificados: await c('centers', "status LIKE 'verificado%'") },
-      persons: { total: ptotal, desaparecidos: pby.desaparecido || 0, encontrados: pby.encontrado || 0 },
-      volunteers: await c('volunteers'),
-      hospitals: { total: ocrHospitalsSummary().total },
       edificios: { total: edificiosCount() },
     };
-  },
-
-  // ---- personas en hospitales (datos OCR, repo abierto de @ecrespo) ----
-  // Búsqueda por nombre/hospital/zona (y por cédula, que NO se devuelve).
-  'GET /api/hospitals': async (p, q) => searchOcrHospitals(q.q, parseInt(q.limit, 10) || 60, q.hospital),
-  'GET /api/hospitals/summary': async () => ocrHospitalsSummary(),
-
-  // ---- solicitudes de ayuda (una persona pide ayuda) ----
-  'POST /api/help-requests': async (p, q, body) => {
-    const id = await store.insert('help_requests', {
-      tipo: body.tipo || 'otro', nombre: (body.nombre || '').trim(), contacto: (body.contacto || '').trim(),
-      estado: body.estado || '', municipio: body.municipio || '', urgencia: body.urgencia || 'Alta',
-      status: 'abierta', data: JSON.stringify(body), created_at: now(),
-    });
-    return oHelp(await store.get('SELECT * FROM help_requests WHERE id=?', [id]));
-  },
-  'GET /api/help-requests': async (p, q) => {
-    let list = (await store.all('SELECT * FROM help_requests ORDER BY id DESC LIMIT 300')).map(oHelp).filter(x => !x.hidden);
-    if (q.status) list = list.filter(x => x.status === q.status);
-    if (q.estado) list = list.filter(x => x.estado === q.estado);
-    if (q.tipo) list = list.filter(x => x.tipo === q.tipo);
-    if (q.q) { const t = q.q.toLowerCase(); list = list.filter(x => [x.nombre, x.lugar, x.estado, x.municipio, x.descripcion].filter(Boolean).join(' ').toLowerCase().includes(t)); }
-    return list.slice(0, Math.min(parseInt(q.limit, 10) || 100, 300));
-  },
-  'PATCH /api/help-requests/:id': async (p, q, body, req) => {
-    const me = await authUser(req); if (!me) return err(401, 'inicia sesión');
-    const r = await store.get('SELECT * FROM help_requests WHERE id=?', [p.id]); if (!r) return err(404);
-    const o = Object.assign(oHelp(r), body);
-    await store.run('UPDATE help_requests SET status=?,data=? WHERE id=?', [o.status || 'abierta', JSON.stringify(o), p.id]);
-    return o;
-  },
-
-  // ---- mascotas (perdidas / encontradas / refugio / veterinario) ----
-  'POST /api/pets': async (p, q, body) => {
-    const status = ['perdida', 'encontrada', 'refugio', 'veterinario'].includes(body.status) ? body.status : 'perdida';
-    const clean = {
-      status, tipo: ('' + (body.tipo || 'Otro')).slice(0, 30), nombre: ('' + (body.nombre || '')).slice(0, 80),
-      descripcion: ('' + (body.descripcion || '')).slice(0, 600), foto: safeUrl(body.foto) || '',
-      estado: ('' + (body.estado || '')).slice(0, 60), municipio: ('' + (body.municipio || '')).slice(0, 80),
-      parroquia: ('' + (body.parroquia || '')).slice(0, 80), lugar: ('' + (body.lugar || '')).slice(0, 160),
-      destino: ('' + (body.destino || '')).slice(0, 160), contacto: ('' + (body.contacto || '')).slice(0, 60),
-      whatsapp: ('' + (body.whatsapp || '')).slice(0, 30),
-    };
-    const id = await store.insert('pets', { status: clean.status, tipo: clean.tipo, zona: clean.municipio || clean.estado, estado: clean.estado, data: JSON.stringify(clean), created_at: now() });
-    return oPet(await store.get('SELECT * FROM pets WHERE id=?', [id]));
-  },
-  'GET /api/pets': async (p, q) => {
-    let list = (await store.all('SELECT * FROM pets ORDER BY id DESC LIMIT 500')).map(oPet).filter(x => !x.hidden);
-    if (q.status) list = list.filter(x => x.status === q.status);
-    if (q.estado) list = list.filter(x => x.estado === q.estado);
-    if (q.q) { const t = q.q.toLowerCase(); list = list.filter(x => [x.nombre, x.tipo, x.descripcion, x.estado, x.municipio, x.lugar].filter(Boolean).join(' ').toLowerCase().includes(t)); }
-    return list.slice(0, Math.min(parseInt(q.limit, 10) || 200, 500));
-  },
-  'PATCH /api/pets/:id': async (p, q, body, req) => {
-    const me = await authUser(req); if (!me || !me.admin) return err(403, 'no autorizado');
-    const r = await store.get('SELECT * FROM pets WHERE id=?', [p.id]); if (!r) return err(404);
-    const o = Object.assign(oPet(r), body);
-    await store.run('UPDATE pets SET status=?,data=? WHERE id=?', [o.status || r.status, JSON.stringify(o), p.id]);
-    return o;
   },
 
   // ---- reportes de servicios (luz/agua/medicinas/comida/combustible) desde reporte-ve ----
@@ -794,52 +571,6 @@ const api = {
   // ---- directorio de emergencia (hospitales/ambulancias/bomberos) y sismos USGS ----
   'GET /api/directorio': async () => getDirectorio(store),
   'GET /api/sismos': async () => { const sismos = await getSismos(); return { sismos, source: 'USGS', count: sismos.length }; },
-
-  // ---- asistente IA: buscar persona por nombre o foto (Gemini) ----
-  'POST /api/assistant': async (p, q, body) => {
-    const name = ('' + (body.name || '')).trim();
-    const hasImg = !!body.image && /^data:image\//.test(body.image);
-    if (!name && !hasImg) return err(400, 'Escribe un nombre o sube una foto');
-    let analysis = null, usedPhoto = false, aiError = null;
-    if (hasImg && assistant.hasKey()) {
-      try { analysis = await assistant.analyzePhoto(body.image); usedPhoto = true; } catch (e) { aiError = e.message; }
-    }
-    // Pool de candidatos: por nombre si lo hay; si no, recientes filtrados por sexo/edad del análisis.
-    let persons = [];
-    if (name) {
-      persons = (await store.all("SELECT * FROM persons WHERE dup_of IS NULL AND lower(nombre) LIKE ? LIMIT 80", ['%' + name.toLowerCase() + '%'])).map(oPerson);
-    } else if (analysis) {
-      const rows = (await store.all("SELECT * FROM persons WHERE dup_of IS NULL ORDER BY id DESC LIMIT 500")).map(oPerson);
-      const sx = (analysis.sexo || '').toLowerCase()[0];
-      persons = rows.filter(x => {
-        if (sx && x.sexo && (('' + x.sexo).toLowerCase()[0] !== sx)) return false;
-        const e = parseInt(x.edad, 10);
-        if (e && analysis.edadMin && analysis.edadMax && (e < analysis.edadMin - 8 || e > analysis.edadMax + 8)) return false;
-        return true;
-      });
-    }
-    persons = persons.filter(x => !x.hidden).slice(0, 60);
-    // Re-rank por foto: comparar contra candidatos con foto (cap 8).
-    let bestId = null, match = null;
-    if (usedPhoto) {
-      const withPhoto = persons.filter(x => /^https?:\/\//i.test(x.foto || '')).slice(0, 8);
-      if (withPhoto.length) {
-        try {
-          const imgs = [];
-          for (const c of withPhoto) { const im = await fetchImageB64(c.foto); if (im) imgs.push({ id: c.id, ...im }); }
-          if (imgs.length) {
-            const r = await assistant.matchPhotos(body.image, imgs);
-            if (r && r.bestIndex >= 0 && imgs[r.bestIndex]) { bestId = imgs[r.bestIndex].id; match = r; }
-          }
-        } catch (e) { aiError = aiError || e.message; }
-      }
-    }
-    if (bestId != null) persons.sort((a, b) => (b.id === bestId ? 1 : 0) - (a.id === bestId ? 1 : 0));
-    // Hospitales por nombre (si lo hay).
-    let hospitals = [];
-    if (name) { try { const h = await searchOcrHospitals(name, 15); hospitals = Array.isArray(h) ? h : (h.results || h.items || []); } catch {} }
-    return { analysis, usedPhoto, needsKey: hasImg && !assistant.hasKey(), aiError, match, bestId, persons: persons.slice(0, 30).map(publicPerson), hospitals }; // allowlist: sin PII de contacto
-  },
 
   // ---- recursos (bases de datos, grupos WhatsApp/Telegram, galería, enlaces) ----
   'GET /api/resources': async () => (await store.all('SELECT * FROM resources ORDER BY created_at DESC')).map(oResource),
@@ -971,7 +702,7 @@ function securityHeaders(res) {
   ].join('; '));
 }
 // Lecturas públicas cacheables por el CDN (sin sesión).
-const isCacheableGet = pathname => (pathname.startsWith('/api/centers') || pathname === '/api/persons' || pathname === '/api/metrics' || pathname === '/api/audit' || pathname.startsWith('/api/hospitals') || pathname === '/api/reportes' || pathname === '/api/edificios' || pathname === '/api/supplies');
+const isCacheableGet = pathname => (pathname.startsWith('/api/centers') || pathname === '/api/metrics' || pathname === '/api/reportes' || pathname === '/api/edificios' || pathname === '/api/supplies');
 
 /* ---------------- Servidor ---------------- */
 const server = http.createServer((req, res) => {
@@ -1090,24 +821,19 @@ async function maybeRefreshCentrosApis() {
   } catch (e) { console.error('[centros-apis] refresco falló:', e.message); }
 }
 
-/* Importa una vez el dataset de personas reportadas (idempotente).
-   Si la tabla ya está llena, no hace nada; si quedó a medias, limpia el seed y reinserta. */
-async function importInitialPersons() {
+/* Purga ÚNICA de datos personales (desaparecidos/hospitalizados/voluntarios/solicitudes/mascotas).
+   AyudaVE dejó de manejar datos de personas en la web por protección ante persecución.
+   Solo borra las tablas listadas abajo; no toca tablas de módulos de extensión. Corre una vez (flag en metrics). */
+async function purgePersonalData() {
   try {
-    if (await store.get("SELECT v FROM metrics WHERE k='persons_seed_v2'")) { console.log('[seed] personas: marcador v2 ya puesto, omito'); return; }
-    let list = [];
-    try { list = require('./data/personas-seed.json'); } catch (e) { console.log('[seed] personas: no se pudo leer personas-seed.json:', e.message); return; }
-    const existing = num((await store.get('SELECT COUNT(*) c FROM persons')).c);
-    console.log('[seed] personas: archivo=' + list.length + ' existentes=' + existing);
-    if (!list.length) return;
-    if (existing >= list.length) { await store.run("INSERT INTO metrics(k,v) VALUES('persons_seed_v2',1) ON CONFLICT(k) DO NOTHING"); console.log('[seed] personas: ya hay suficientes, marco y omito'); return; }
-    if (existing > 0) await store.run('DELETE FROM persons WHERE data LIKE ?', ['%desaparecidosterremotovenezuela.com%']);
-    let n = 0;
-    for (let i = 0; i < list.length; i += 500) { await insertPersonsBatch(store, list.slice(i, i + 500)); n += Math.min(500, list.length - i); }
-    await store.run("INSERT INTO metrics(k,v) VALUES('persons_seed_v2',1) ON CONFLICT(k) DO NOTHING");
-    try { delete require.cache[require.resolve('./data/personas-seed.json')]; } catch {}  // libera ~27MB de memoria
-    console.log('[seed] personas importadas:', n, 'de', list.length);
-  } catch (e) { console.error('[seed] import personas falló:', e.message); }
+    if (await store.get("SELECT v FROM metrics WHERE k='personal_data_purged_v1'")) return;
+    let total = 0;
+    for (const t of ['persons', 'sightings', 'volunteers', 'applications', 'help_requests', 'pets']) {
+      try { const r = await store.run(`DELETE FROM ${t}`); total += (r && r.changes) || 0; } catch {}
+    }
+    await store.run("INSERT INTO metrics(k,v) VALUES('personal_data_purged_v1',1) ON CONFLICT(k) DO NOTHING");
+    console.log('[purge] datos personales eliminados:', total, 'filas (persons/voluntarios/solicitudes/mascotas)');
+  } catch (e) { console.error('[purge] falló:', e.message); }
 }
 
 process.on('uncaughtException', e => console.error('[uncaughtException]', e));
@@ -1119,8 +845,8 @@ server.listen(PORT, () => console.log(`AyudaVE (${store.kind}/${storage.kind}) e
   for (let i = 1; i <= 12; i++) {
     try {
       await store.init();
-      await ensurePersonsSourceId(store); await ensureAuditColumns(store); // columnas source_id + dup_of
-      await importInitialCenters(); await importInitialPersons();
+      await purgePersonalData(); // elimina de una vez datos de personas/voluntarios (protección)
+      await importInitialCenters();
       if (process.env.AYUDAVE_SEED === 'on') await seed();
       console.log('Base de datos lista');
       // Auto-actualización de centros de acopio: primera carga a los 20s, luego chequeo cada 10 min.
@@ -1130,7 +856,6 @@ server.listen(PORT, () => console.log(`AyudaVE (${store.kind}/${storage.kind}) e
         setTimeout(maybeRefreshCentrosApis, 25000);
         setInterval(maybeRefreshCentrosApis, 10 * 60 * 1000).unref();
       }
-      primeOcrHospitals(); // pacientes en hospitales (OCR) — carga en memoria + refresco cada 6h
       primeReportes(); // reportes de servicios (reporte-ve) — carga en memoria + refresco cada 1h
       primeEdificios(); // edificios afectados (terremotovenezuela.com) — carga en memoria + refresco cada 1h
       primeSupplies(); // catálogo maestro de insumos (ReliefHub/ResponseGrid) — carga en memoria + refresco cada 12h

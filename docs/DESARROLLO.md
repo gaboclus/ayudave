@@ -34,15 +34,13 @@ storage.js                # Imágenes: disco o Cloud Storage (GCS_BUCKET)
 Dockerfile                # Imagen para Cloud Run
 
 import-*.js               # Una fuente de datos externa por archivo (ver INTEGRACIONES.md)
-  import-dtv.js           #   desaparecidos  → tabla persons
-  audit-dtv.js            #   auditoría de duplicados de persons
   import-acopio.js        #   centros de acopio → tabla centers
-  import-ocr-hospitals.js #   pacientes en hospitales (memoria)
+  import-centros-apis.js  #   centros vía APIs (AcopioVE + ResponseGrid) → tabla centers
+  import-supplies.js      #   catálogo de insumos (memoria)
   import-reportes.js      #   cortes de servicios (memoria)
   import-edificios.js     #   edificios afectados (memoria)
   import-directorio.js    #   directorio de emergencia → tabla directory
   import-sismos.js        #   sismos USGS (memoria)
-refresh-dtv.js            # Entrypoint de refresco incremental de personas (job/cron/CLI)
 
 public/                   # Frontend (sin build)
   index.html  app.js  api.js  data.js  geo-ve.js  styles.css  vendor/leaflet/
@@ -82,18 +80,13 @@ docs/                     # Esta documentación
 | `AYUDAVE_GA_ID` | ID de Google Analytics (opcional). |
 | `AYUDAVE_METRICS_SALT` 🔒 | Sal para anonimizar visitantes únicos. |
 | `AYUDAVE_SEED` | `on` carga datos de demostración. |
-| `AYUDAVE_IMPORT_TOKEN` / `IMP_TOKEN` 🔒 | Token que habilita los endpoints de importación masiva (normalmente desactivados). |
 
 ### Fuentes de datos (todas opcionales — tienen valor por defecto en su `import-*.js`)
 | Variable | Para qué |
 |---|---|
 | `ACOPIO_SHEET_URL`, `ACOPIO_IMPORT`, `ACOPIO_REFRESH_MIN` | Centros de acopio: URL del sheet, on/off, intervalo. |
-| `OCR_HOSPITALS_CSV` | URL del CSV de pacientes en hospitales. |
 | `REPORTES_URL` | API de reportes de servicios. |
 | `EDIF_API` | Base de la API de edificios. |
-| `DTV_API`, `DTV_PROXY` 🔒 | API de desaparecidos y proxy opcional. |
-| `REFRESH_PAGES`, `REFRESH_PAGE_SIZE`, `REFRESH_STOP_WHEN_CLEAN` | Parámetros del refresco de personas. |
-| `AUDIT_ON_REFRESH`, `AUDIT_MIN_MINUTES` | Auditoría de duplicados. |
 | `PROD_URL` | URL de producción para scripts que empujan datos. |
 
 ## Despliegue

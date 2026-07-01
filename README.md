@@ -3,9 +3,9 @@
 **Plataforma humanitaria para Venezuela** tras el sismo de La Guaira (24–25 jun 2026).
 En vivo: **https://ayudahumanitariavenezuela.com**
 
-AyudaVE reúne, en un solo lugar y en tiempo real, la información dispersa que una familia o un voluntario necesita en la emergencia: **centros de acopio**, **personas desaparecidas**, **personas en hospitales**, **edificios afectados**, **cortes de servicios**, **directorio de emergencia** y **réplicas sísmicas** — todo buscable y en un mapa.
+AyudaVE reúne, en un solo lugar y en tiempo real, la información dispersa que una familia necesita en la emergencia: **centros de acopio**, **edificios afectados**, **cortes de servicios**, **directorio de emergencia**, **catálogo de insumos** y **réplicas sísmicas** — todo buscable y en un mapa.
 
-La clave del proyecto: **no inventamos datos**. Agregamos y normalizamos fuentes abiertas de otras iniciativas (con atribución), las mantenemos sincronizadas solas, y exponemos todo con una privacidad cuidada para reunificación familiar.
+La clave del proyecto: **no inventamos datos**. Agregamos y normalizamos fuentes abiertas de otras iniciativas (con atribución), las mantenemos sincronizadas solas. Por protección de las personas, la plataforma **no maneja datos personales**: se enfoca en información no personal de la emergencia.
 
 ---
 
@@ -17,7 +17,7 @@ La clave del proyecto: **no inventamos datos**. Agregamos y normalizamos fuentes
 | **[docs/INTEGRACIONES.md](docs/INTEGRACIONES.md)** | Devs | **Cómo integrar una nueva API/fuente de otra página** (paso a paso + plantilla). |
 | **[docs/DESARROLLO.md](docs/DESARROLLO.md)** | Devs | Correr en local, estructura del código, convenciones, variables de entorno. |
 | **[docs/DESPLIEGUE.md](docs/DESPLIEGUE.md)** | Devs/Ops | Infraestructura, cómo desplegar, escalado, montaje inicial. |
-| **[docs/MANUAL-USUARIO.md](docs/MANUAL-USUARIO.md)** | Usuarios | Cómo usar la app (buscar, reportar, donar, ser voluntario, difundir). → también en **PDF**. |
+| **[docs/MANUAL-USUARIO.md](docs/MANUAL-USUARIO.md)** | Usuarios | Cómo usar la app (buscar, donar, difundir). → también en **PDF**. |
 | **[CONTRIBUTING.md](CONTRIBUTING.md)** | Devs | Cómo contribuir: setup, reglas (privacidad/secretos), estilo, flujo de PR. |
 
 **PDFs** (en `docs/`): `AyudaVE-Documentacion.pdf` (técnico, con índice + diagrama) y `AyudaVE-Manual-Usuario.pdf`. Se regeneran con `node docs/build-pdfs.js` + Chrome `--print-to-pdf`. Diagrama: `docs/arquitectura.svg`.
@@ -29,13 +29,12 @@ La clave del proyecto: **no inventamos datos**. Agregamos y normalizamos fuentes
 ## Qué hace, en una pantalla
 
 - **Centros de acopio** — buscar/filtrar por estado, municipio o parroquia; ver qué necesitan; cómo llegar; contacto directo (WhatsApp/Instagram).
-- **Personas desaparecidas** — registro buscable, con auditoría de duplicados.
-- **Personas en hospitales** — registro buscable para reunificación familiar.
 - **Edificios afectados** — daños estructurales con nivel y ubicación.
 - **Mapa de la situación** — centros + cortes de servicios + edificios con daños.
 - **Directorio de emergencia** — hospitales, bomberos, ambulancias, protección civil.
+- **Catálogo de insumos** — referencia de insumos para la respuesta a la emergencia.
 - **Recursos** — grupos de WhatsApp/Telegram, bases de datos, galerías (los administra el equipo).
-- **Acciones** — donar (insumos, Pago Móvil, transferencia, cripto), ser voluntario, registrar/gestionar un centro de acopio, pedir ayuda.
+- **Acciones** — donar (insumos, Pago Móvil, transferencia, cripto), registrar/gestionar un centro de acopio.
 
 ## Stack en 10 segundos
 
@@ -58,7 +57,7 @@ Sin `DATABASE_URL` ni `GCS_BUCKET`, todo corre en local con SQLite + disco. **No
 
 ## Para los nuevos devs
 
-Si te uniste para **integrar la API/datos de otra página** (hospitales, desaparecidos, daños, etc.), empieza aquí: **[docs/INTEGRACIONES.md](docs/INTEGRACIONES.md)**. En ~30 líneas de un archivo nuevo `import-<fuente>.js` tienes una fuente más, auto-sincronizada y en el mapa.
+Si te uniste para **integrar la API/datos de otra página** (centros, daños, servicios, insumos, etc.), empieza aquí: **[docs/INTEGRACIONES.md](docs/INTEGRACIONES.md)**. En ~30 líneas de un archivo nuevo `import-<fuente>.js` tienes una fuente más, auto-sincronizada y en el mapa.
 
 ## Autor y créditos
 
